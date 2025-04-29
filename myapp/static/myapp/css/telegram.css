@@ -1,0 +1,193 @@
+/* Убираем все отступы и растягиваем на весь экран */
+.full-width-container {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+
+.row.no-gutters {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.row.no-gutters > [class^="col-"],
+.row.no-gutters > [class*=" col-"] {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Стили для карточки фильтров */
+.card-filter {
+    margin-top: 20px;
+}
+
+/* Стили для лоадера */
+.loader {
+    display: none;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.loader img {
+    border-radius: 50%;
+    width: 360px;
+    height: 360px;
+}
+
+/* Стили для тумблера */
+.volume-toggle-container {
+    float: right;
+    margin-right: 10px;
+}
+
+/* Стили для таблицы */
+.table-container {
+    transition: all 0.3s ease-in-out;
+    width: 100%;
+}
+
+/* Фиксируем ширину столбцов таблицы */
+.post-table {
+    table-layout: fixed; /* Фиксируем ширину столбцов */
+    width: 100%; /* Таблица занимает всю доступную ширину */
+}
+
+/* Задаём ширину столбцов */
+.post-table th:nth-child(1),
+.post-table td:nth-child(1) {
+    width: 15%; /* Столбец "Канал" */
+    white-space: nowrap; /* Предотвращаем перенос текста */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.post-table th:nth-child(2),
+.post-table td:nth-child(2) {
+    width: 55%; /* Столбец "Пост" */
+    word-wrap: break-word; /* Разрешаем перенос длинного текста */
+}
+
+.post-table th:nth-child(3),
+.post-table td:nth-child(3) {
+    width: 7.5%; /* Столбец "Просмотры" */
+    text-align: center;
+}
+
+.post-table th:nth-child(4),
+.post-table td:nth-child(4) {
+    width: 7.5%; /* Столбец "Репосты" */
+    text-align: center;
+}
+
+.post-table th:nth-child(5),
+.post-table td:nth-child(5) {
+    width: 7.5%; /* Столбец "Реакции" */
+    text-align: center;
+}
+
+.post-table th:nth-child(6),
+.post-table td:nth-child(6) {
+    width: 7.5%; /* Столбец "Комментарии" */
+    text-align: center;
+}
+
+/* Плавное разворачивание текста */
+.short-text,
+.full-text {
+    transition: opacity 0.3s ease-in-out; /* Плавное изменение видимости */
+}
+
+.short-text {
+    display: inline;
+    opacity: 1;
+}
+
+.full-text {
+    display: none;
+    opacity: 0;
+}
+
+.short-text[style*="display: none"],
+.full-text[style*="display: none"] {
+    opacity: 0;
+}
+
+.short-text[style*="display: inline"],
+.full-text[style*="display: inline"] {
+    opacity: 1;
+}
+
+/* Стили для блока деталей */
+.details-container {
+    transition: all 0.3s ease-in-out;
+    width: 100%;
+}
+
+.post-table tr {
+    cursor: pointer;
+    transition: background-color 0.2s ease; /* Плавное изменение фона */
+}
+
+.post-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Подсветка активной строки */
+.post-table .active-post {
+    background-color: #e0f7fa; /* Светло-голубой фон для активной строки */
+    font-weight: bold;
+}
+
+.reaction-emoji {
+    font-size: 1.2em;
+    margin-right: 5px;
+}
+
+.list-group-item {
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.text-muted {
+    font-size: 0.9em;
+}
+
+/* Стили для реакций комментариев */
+.comment-reactions {
+    font-size: 0.9em;
+    color: #555;
+}
+
+#post-details {
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    transition: all 0.3s ease-in-out;
+    display: none; /* Изначально скрыт, показывается при клике */
+}
+
+#post-details .card {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    display: block; /* Убедимся, что карта отображается */
+}
+
+#reactions-list, #comments-list {
+    display: block !important; /* Убедимся, что списки отображаются */
+}
+
+#comments-pagination {
+    display: flex;
+    justify-content: center;
+}
+
+.active-post {
+    background-color: #e0f7fa;
+    border-left: 4px solid #007bff;
+    font-weight: bold;
+}

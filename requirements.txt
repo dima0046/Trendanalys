@@ -1,0 +1,29 @@
+# Django и связанные библиотеки
+django==5.1.1
+django-bootstrap5==24.3
+django-filter==24.3
+
+# Работа с Telegram API
+telethon==1.36.0
+
+# Обработка данных и экспорт
+pandas==2.2.3
+openpyxl==3.1.5
+
+# Машинное обучение и обработка текста
+scikit-learn==1.5.2
+nltk==3.9.1
+openai==1.52.0
+
+# HTTP-запросы
+requests==2.32.3
+
+# Утилиты для работы с датами и временем
+python-dateutil==2.9.0.post0
+pytz==2024.2
+
+# Работа с переменными окружения
+python-dotenv==1.0.1
+
+# Асинхронный сервер
+uvicorn==0.32.0

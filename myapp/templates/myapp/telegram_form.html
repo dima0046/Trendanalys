@@ -1,0 +1,549 @@
+{% extends 'myapp/base.html' %}
+
+{% load static %}
+
+{% block title %}Введите данные для экспорта статистики Telegram{% endblock %}
+
+{% block content %}
+<div class="full-width-container">
+    <h4>Telegram парсер</h4>
+    <div class="row">
+        <!-- Левая колонка для ввода данных -->
+        <div class="col-md-3">
+            <div class="card mb-3">
+                <h5 class="card-header">Введите данные</h5>
+                <div class="card-body">
+                    <form method="post" id="telegram-form">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="channel_url" class="form-label">{{ form.channel_url.label }}</label>
+                            <textarea class="form-control {{ form.channel_url.errors|yesno:'is-invalid,' }}" id="channel_url" name="channel_url" rows="10">{{ form.channel_url.value|default_if_none:'' }}</textarea>
+                            {% if form.channel_url.errors %}
+                                {% for error in form.channel_url.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.start_date.id_for_label }}">От</label>
+                            {{ form.start_date }}
+                            {% if form.start_date.errors %}
+                                {% for error in form.start_date.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.end_date.id_for_label }}">До</label>
+                            {{ form.end_date }}
+                            {% if form.end_date.errors %}
+                                {% for error in form.end_date.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Загрузить</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Новая карточка "Фильтры" -->
+            {% if unique_titles %}
+            <div class="card">
+                <h5 class="card-header">Фильтры</h5>
+                <div class="card-body">
+                    <form method="get" id="filter-form">
+                        <input type="hidden" name="data_id" value="{{ data_id }}">
+                        <input type="hidden" name="channel_url" value="{{ channel_url }}">
+                        <input type="hidden" name="start_date" value="{{ start_date }}">
+                        <input type="hidden" name="end_date" value="{{ end_date }}">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="all" id="filter-all" name="filter" {% if 'all' in filters or not filters %}checked{% endif %}>
+                                <label class="form-check-label" for="filter-all">Все</label>
+                            </div>
+                            {% for title in unique_titles %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ title }}" id="filter-{{ forloop.counter }}" name="filter" {% if title in filters %}checked{% endif %}>
+                                    <label class="form-check-label" for="filter-{{ forloop.counter }}">{{ title }}</label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Применить</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Средняя колонка для таблицы -->
+        <div class="col-md-6" id="table-container">
+            <div class="card">
+                <h5 class="card-header">
+                    Результат
+                    <span class="volume-toggle-container">
+                        <i id="volume-toggle" class="fas fa-volume-mute" style="cursor: pointer;"></i>
+                    </span>
+                </h5>
+                <div class="card-body" id="card-content">
+                    {% if parsed_data %}
+                        <form method="get" action="{% url 'export_to_excel' %}">
+                            <input type="hidden" name="data_id" value="{{ data_id }}">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-download"></i> Excel
+                            </button>
+                        </form>
+                        <div class="mt-3">
+                            <table class="table post-table">
+                                <thead>
+                                    <tr>
+                                        <th>Канал</th>
+                                        <th>Пост</th>
+                                        <th class="text-center"><i class="far fa-eye"></i></th>
+                                        <th class="text-center"><i class="fas fa-share"></i></th>
+                                        <th class="text-center"><i class="fas fa-poo"></i></th>
+                                        <th class="text-center"><i class="fas fa-comment"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in parsed_data %}
+                                        {% if not filters or 'all' in filters or item.title in filters %}
+                                            <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}">
+                                                <td>{{ item.title }}</td>
+                                                <td>
+                                                    <a href="{{ item.link }}">{{ item.post_id }}</a> от {{ item.date }}<br>
+                                                    <span class="short-text">{{ item.message|slice:":100" }}...</span>
+                                                    <span class="full-text" style="display:none;">{{ item.message }}</span>
+                                                    <a href="#" class="read-more" data-expanded="false">читать далее</a>
+                                                </td>
+                                                <td class="text-center">{{ item.views }}</td>
+                                                <td class="text-center">{{ item.forwards }}</td>
+                                                <td class="text-center">{{ item.reactions }}</td>
+                                                <td class="text-center">{{ item.comments_count }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Добавление пагинации -->
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination">
+                                {% if parsed_data.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}&{% for filter in filters %}filter={{ filter }}&{% endfor %}" aria-label="First">
+                                            <span aria-hidden="true">««</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ parsed_data.previous_page_number }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}&{% for filter in filters %}filter={{ filter }}&{% endfor %}" aria-label="Previous">
+                                            <span aria-hidden="true">«</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% for num in parsed_data.paginator.page_range %}
+                                    {% if parsed_data.number == num %}
+                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ num }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}&{% for filter in filters %}filter={{ filter }}&{% endfor %}">{{ num }}</a></li>
+                                    {% endif %}
+                                {% endfor %}
+                                {% if parsed_data.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ parsed_data.next_page_number }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}&{% for filter in filters %}filter={{ filter }}&{% endfor %}" aria-label="Next">
+                                            <span aria-hidden="true">»</span>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ parsed_data.paginator.num_pages }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}&{% for filter in filters %}filter={{ filter }}&{% endfor %}" aria-label="Last">
+                                            <span aria-hidden="true">»»</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% else %}
+                        <p>Данные отсутствуют</p>
+                    {% endif %}
+                </div>
+                <!-- Анимация загрузки -->
+                <div id="loader" class="loader">
+                    <img src="{% static 'myapp/gif/pedro-raccoon-raccoon.gif' %}" alt="Loading...">
+                    <!-- Аудиофайл -->
+                    <audio id="loading-audio" src="{% static 'myapp/audio/pedro-raccoon-raccoon.mp3' %}" preload="auto" loop></audio>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка для деталей -->
+        <div class="col-md-3">
+            <div id="post-details" class="post-details" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        Детали поста <button id="close-details" class="btn btn-close float-end"></button>
+                    </div>
+                    <div class="card-body">
+                        <h5>Реакции:</h5>
+                        <ul id="reactions-list" class="list-group"></ul>
+                        <div id="reactions-toggle" style="display: none;">
+                            <a href="#" class="toggle-reactions">развернуть</a>
+                        </div>
+                        <h5 class="mt-3">Комментарии:</h5>
+                        <ul id="comments-list" class="list-group"></ul>
+                        <nav aria-label="Comments navigation" id="comments-pagination" class="mt-3">
+                            <ul class="pagination pagination-sm">
+                                <!-- Пагинация будет добавлена через JS -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'myapp/js/telegram.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const postRows = document.querySelectorAll('.post-row');
+        const postDetails = document.getElementById('post-details');
+        const reactionsList = document.getElementById('reactions-list');
+        const reactionsToggle = document.getElementById('reactions-toggle');
+        const commentsList = document.getElementById('comments-list');
+        const commentsPagination = document.getElementById('comments-pagination');
+        const closeDetails = document.getElementById('close-details');
+        const tableContainer = document.getElementById('table-container');
+
+        // Проверка существования элементов
+        console.log('Checking DOM elements:');
+        console.log('postDetails:', postDetails);
+        console.log('reactionsList:', reactionsList);
+        console.log('reactionsToggle:', reactionsToggle);
+        console.log('commentsList:', commentsList);
+        console.log('commentsPagination:', commentsPagination);
+        console.log('closeDetails:', closeDetails);
+        console.log('tableContainer:', tableContainer);
+
+        if (!postDetails || !reactionsList || !reactionsToggle || !commentsList || !commentsPagination || !closeDetails || !tableContainer) {
+            console.error('One or more DOM elements not found:', {
+                postDetails,
+                reactionsList,
+                reactionsToggle,
+                commentsList,
+                commentsPagination,
+                closeDetails,
+                tableContainer
+            });
+            return;
+        }
+
+        let currentPostId = null;
+        let currentChannelId = null;
+        let currentPage = 1;
+        const commentsPerPage = 10;
+
+        async function loadPostDetails(postId, channelId, page = 1) {
+            currentPostId = postId;
+            currentChannelId = channelId;
+            currentPage = page;
+
+            console.log(`Loading details for post ${postId} in channel ${channelId}, page ${page}`);
+            try {
+                const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                }
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                // Проверка элементов перед использованием
+                if (!reactionsList || !commentsList || !commentsPagination || !reactionsToggle) {
+                    console.error('DOM elements became null during execution:', {
+                        reactionsList,
+                        commentsList,
+                        commentsPagination,
+                        reactionsToggle
+                    });
+                    return;
+                }
+
+                // Очистка содержимого
+                reactionsList.innerHTML = '';
+                reactionsToggle.innerHTML = '';
+                commentsList.innerHTML = '';
+                const paginationUl = commentsPagination.querySelector('ul');
+                if (!paginationUl) {
+                    console.error('Pagination <ul> element not found inside commentsPagination');
+                    return;
+                }
+                paginationUl.innerHTML = '';
+
+                // Отображение реакций на пост (первые 3 + "развернуть")
+                if (data.reactions && data.reactions.length > 0) {
+                    const visibleReactions = data.reactions.slice(0, 3);
+                    const hiddenReactions = data.reactions.slice(3);
+
+                    // Показываем первые 3 реакции
+                    visibleReactions.forEach(reaction => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item reaction-item';
+                        li.innerHTML = `<span class="reaction-emoji">${reaction.emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                        reactionsList.appendChild(li);
+                    });
+
+                    // Если есть скрытые реакции, добавляем кнопку "развернуть"
+                    if (hiddenReactions.length > 0) {
+                        const hiddenContainer = document.createElement('div');
+                        hiddenContainer.className = 'hidden-reactions';
+                        hiddenContainer.style.display = 'none';
+                        hiddenReactions.forEach(reaction => {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item reaction-item';
+                            li.innerHTML = `<span class="reaction-emoji">${reaction.emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                        hiddenContainer.appendChild(li);
+                        });
+                        reactionsList.appendChild(hiddenContainer);
+
+                        const toggleLink = document.createElement('a');
+                        toggleLink.href = '#';
+                        toggleLink.className = 'toggle-reactions';
+                        toggleLink.textContent = 'развернуть';
+                        reactionsToggle.appendChild(toggleLink);
+
+                        reactionsToggle.style.display = 'block';
+                        toggleLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            if (hiddenContainer.style.display === 'none') {
+                                hiddenContainer.style.display = 'block';
+                                this.textContent = 'свернуть';
+                            } else {
+                                hiddenContainer.style.display = 'none';
+                                this.textContent = 'развернуть';
+                            }
+                        });
+                    } else {
+                        reactionsToggle.style.display = 'none';
+                    }
+                } else {
+                    reactionsList.innerHTML = '<li class="list-group-item">Нет реакций</li>';
+                    reactionsToggle.style.display = 'none';
+                }
+
+                // Отображение комментариев с "читать далее"
+                if (data.total_comments > 0 && data.comments && data.comments.length > 0) {
+                    data.comments.forEach(comment => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+
+                        const message = comment.message || '[Без текста]';
+                        const isLongMessage = message.length > 100;
+                        const shortMessage = isLongMessage ? message.slice(0, 100) + '...' : message;
+                        const fullMessage = message;
+
+                        const messageContainer = document.createElement('div');
+                        messageContainer.className = 'comment-message';
+
+                        const shortText = document.createElement('p');
+                        shortText.className = 'mb-1 short-comment';
+                        shortText.textContent = shortMessage;
+                        messageContainer.appendChild(shortText);
+
+                        const fullText = document.createElement('p');
+                        fullText.className = 'mb-1 full-comment';
+                        fullText.textContent = fullMessage;
+                        fullText.style.display = 'none';
+                        messageContainer.appendChild(fullText);
+
+                        if (isLongMessage) {
+                            const toggleLink = document.createElement('a');
+                            toggleLink.href = '#';
+                            toggleLink.className = 'toggle-comment';
+                            toggleLink.textContent = 'читать далее';
+                            messageContainer.appendChild(toggleLink);
+
+                            toggleLink.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                if (shortText.style.display === 'none') {
+                                    shortText.style.display = 'block';
+                                    fullText.style.display = 'none';
+                                    this.textContent = 'читать далее';
+                                } else {
+                                    shortText.style.display = 'none';
+                                    fullText.style.display = 'block';
+                                    this.textContent = 'свернуть';
+                                }
+                            });
+                        }
+
+                        li.appendChild(messageContainer);
+
+                        const meta = document.createElement('small');
+                        meta.className = 'text-muted';
+                        meta.innerHTML = `
+                            Автор: ${comment.author || 'Аноним'} | 
+                            Дата: ${comment.date} | 
+                            Репостов: ${comment.forwards} | 
+                            Ответов: ${comment.replies}
+                        `;
+                        li.appendChild(meta);
+
+                        commentsList.appendChild(li);
+                    });
+                } else {
+                    commentsList.innerHTML = '<li class="list-group-item">Комментарии отсутствуют или запрещены в этом канале</li>';
+                }
+
+                // Пагинация комментариев
+                const totalComments = data.total_comments || 0;
+                console.log('Total comments:', totalComments);
+                const totalPages = Math.ceil(totalComments / commentsPerPage);
+                if (totalPages > 1) {
+                    if (page > 1) {
+                        const prevLi = document.createElement('li');
+                        prevLi.className = 'page-item';
+                        prevLi.innerHTML = `<a class="page-link" href="#" data-page="${page - 1}">«</a>`;
+                        paginationUl.appendChild(prevLi);
+                    }
+                    for (let i = 1; i <= totalPages; i++) {
+                        const li = document.createElement('li');
+                        li.className = `page-item ${i === page ? 'active' : ''}`;
+                        li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                        paginationUl.appendChild(li);
+                    }
+                    if (page < totalPages) {
+                        const nextLi = document.createElement('li');
+                        nextLi.className = 'page-item';
+                        nextLi.innerHTML = `<a class="page-link" href="#" data-page="${page + 1}">»</a>`;
+                        paginationUl.appendChild(nextLi);
+                    }
+                }
+
+                highlightActivePost();
+            } catch (error) {
+                console.error('Error loading post details:', error);
+                if (commentsList) {
+                    commentsList.innerHTML = `<li class="list-group-item">Ошибка загрузки комментариев: ${error.message}</li>`;
+                } else {
+                    console.error('Cannot display error message: commentsList is null');
+                }
+            }
+        }
+
+        function highlightActivePost() {
+            postRows.forEach(row => {
+                row.classList.remove('active-post');
+                if (row.getAttribute('data-post-id') === currentPostId) {
+                    row.classList.add('active-post');
+                }
+            });
+        }
+
+        // Обработчик клика по строке
+        postRows.forEach(row => {
+            row.addEventListener('click', async function(e) {
+                // Проверяем, что клик не был по элементу с классом read-more
+                const target = e.target;
+                if (target && target.classList && target.classList.contains('read-more')) {
+                    console.log('Click on read-more, skipping row handler');
+                    return;
+                }
+                const postId = this.getAttribute('data-post-id');
+                const channelId = this.getAttribute('data-channel-id');
+                console.log('Row clicked:', this);
+                console.log('postId:', postId, 'channelId:', channelId);
+                if (!postId || !channelId) {
+                    console.error('Missing postId or channelId:', { postId, channelId });
+                    return;
+                }
+                postRows.forEach(r => r.classList.remove('active-post'));
+                this.classList.add('active-post');
+                postDetails.style.display = 'block';
+                tableContainer.classList.remove('col-10');
+                tableContainer.classList.add('col-8');
+                await loadPostDetails(postId, channelId, 1);
+            });
+        });
+
+        // Закрытие панели деталей
+        closeDetails.addEventListener('click', function() {
+            postDetails.style.display = 'none';
+            tableContainer.classList.remove('col-8');
+            tableContainer.classList.add('col-10');
+            postRows.forEach(row => row.classList.remove('active-post'));
+            currentPostId = null;
+        });
+
+        // Пагинация комментариев
+        commentsPagination.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const target = e.target.closest('a');
+            if (target) {
+                const page = parseInt(target.getAttribute('data-page'));
+                if (page) {
+                    await loadPostDetails(currentPostId, currentChannelId, page);
+                }
+            }
+        });
+
+        // Инициализация начальных стилей для short-text и full-text
+        const shortTexts = document.querySelectorAll('.short-text');
+        const fullTexts = document.querySelectorAll('.full-text');
+        shortTexts.forEach((shortText, index) => {
+            shortText.style.display = 'inline'; // Явно задаем начальное значение
+            fullTexts[index].style.display = 'none'; // Убедимся, что full-text скрыт
+        });
+
+        // Функционал для "читать далее" в постах с делегированием событий
+        document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (target && target.classList && target.classList.contains('read-more')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Read more clicked:', target);
+                console.log('Button text before trim:', JSON.stringify(target.textContent));
+                const buttonText = target.textContent.trim();
+                console.log('Button text after trim:', JSON.stringify(buttonText));
+                const parent = target.parentElement;
+                const shortText = parent.querySelector('.short-text');
+                const fullText = parent.querySelector('.full-text');
+                if (!shortText || !fullText) {
+                    console.error('Short or full text not found:', { shortText, fullText });
+                    return;
+                }
+                // Используем атрибут data-expanded для отслеживания состояния
+                const isExpanded = target.getAttribute('data-expanded') === 'true';
+                if (!isExpanded) {
+                    shortText.style.display = 'none';
+                    fullText.style.display = 'inline';
+                    target.textContent = 'свернуть';
+                    target.setAttribute('data-expanded', 'true');
+                } else {
+                    shortText.style.display = 'inline';
+                    fullText.style.display = 'none';
+                    target.textContent = 'читать далее';
+                    target.setAttribute('data-expanded', 'false');
+                }
+                console.log('After toggle - shortText:', shortText.style.display, 'fullText:', fullText.style.display);
+            }
+        });
+
+        // Функционал для переключения звука
+        const volumeToggle = document.getElementById('volume-toggle');
+        const loadingAudio = document.getElementById('loading-audio');
+        volumeToggle.addEventListener('click', function() {
+            if (loadingAudio.muted) {
+                loadingAudio.muted = false;
+                volumeToggle.classList.remove('fa-volume-mute');
+                volumeToggle.classList.add('fa-volume-up');
+            } else {
+                loadingAudio.muted = true;
+                volumeToggle.classList.remove('fa-volume-up');
+                volumeToggle.classList.add('fa-volume-mute');
+            }
+        });
+    });
+</script>
+
+{% endblock %}
