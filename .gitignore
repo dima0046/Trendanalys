@@ -40,6 +40,9 @@ ehthumbs.db
 *.stackdump
 runserver.bat
 
-#Telegram
+# Telegram
 *.session
 temp_data/
+
+# Trash
+trash_folder/
