@@ -46,3 +46,7 @@ temp_data/
 
 # Trash
 trash_folder/
+
+# Machine learning
+*.joblib
+machine_learning/categorized_2024.json
