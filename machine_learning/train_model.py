@@ -38,6 +38,13 @@ def load_categorized_data():
         logging.error(f"Categorized data file not found at {CATEGORIZED_DATA_PATH}")
         return []
 
+# Сохранение обновлённой базы данных
+def save_categorized_data(data):
+    os.makedirs(os.path.dirname(CATEGORIZED_DATA_PATH), exist_ok=True)
+    with open(CATEGORIZED_DATA_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+    logging.info(f"Categorized data saved to {CATEGORIZED_DATA_PATH}")
+
 # Инициализация и обучение модели
 def train_model():
     categorized_data = load_categorized_data()
@@ -99,8 +106,38 @@ def predict_category(text, model, vectorizer):
     return model.predict(X_new)[0]
 
 # Обновление модели с новыми данными
-def update_model(new_data):
+def update_model(new_data, temp_data_path=None):
     categorized_data = load_categorized_data()
+
+    # Если передан путь к temp_data, добавляем данные в categorized_2024.json
+    if temp_data_path:
+        try:
+            with open(temp_data_path, 'r', encoding='utf-8') as f:
+                temp_data = json.load(f)
+            for item in temp_data:
+                # Формируем запись в формате categorized_2024.json
+                new_entry = {
+                    "Social": "TG",
+                    "Page url": f"https://t.me/{item['title']}",
+                    "Post Url": item['link'],
+                    "Likes": item['reactions'],
+                    "Reposts": item['forwards'],
+                    "Comments": item['comments_count'],
+                    "Views": item['views'],
+                    "ER Post": 0.0,  # Можно добавить расчёт, если нужно
+                    "ER View": 0.0,
+                    "VR": 0.0,
+                    "Category ": item['category'],
+                    "Text": item['message'],
+                    "Date": item['date'],
+                    "Type": "text"  # Упрощение, можно уточнить тип
+                }
+                categorized_data.append(new_entry)
+            save_categorized_data(categorized_data)
+        except FileNotFoundError:
+            logging.error(f"Temp data file not found at {temp_data_path}")
+
+    # Добавляем новые данные (из update_post_category)
     all_data = categorized_data + new_data
     texts = []
     categories = []
@@ -146,3 +183,19 @@ def get_unique_categories():
         if category is not None and category:
             categories.add(category)
     return sorted(categories)
+
+# Экспорт модели для использования в других проектах
+def export_model(export_path):
+    try:
+        model = joblib.load(MODEL_PATH)
+        vectorizer = joblib.load(VECTORIZER_PATH)
+        export_model_path = os.path.join(export_path, 'telegram_category_model.joblib')
+        export_vectorizer_path = os.path.join(export_path, 'telegram_category_vectorizer.joblib')
+        os.makedirs(export_path, exist_ok=True)
+        joblib.dump(model, export_model_path)
+        joblib.dump(vectorizer, export_vectorizer_path)
+        logging.info(f"Model and vectorizer exported to {export_model_path} and {export_vectorizer_path}")
+        return True
+    except FileNotFoundError:
+        logging.error("Model or vectorizer not found for export.")
+        return False

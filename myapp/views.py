@@ -37,7 +37,7 @@ import os
 from dotenv import load_dotenv
 
 # Machine learning imports
-from machine_learning.train_model import load_model, predict_category, update_model, get_unique_categories
+from machine_learning.train_model import load_model, predict_category, update_model, get_unique_categories, export_model
 
 load_dotenv()
 api_id = os.getenv("API_ID")  
@@ -204,7 +204,7 @@ async def telegram_view(request):
                 'end_date': request.POST.get('end_date'),
                 'sort_by': sort_by,
                 'sort_direction': sort_direction,
-                'unique_categories': get_unique_categories(),  # Передаем категории в шаблон
+                'unique_categories': get_unique_categories(),
             })
     else:
         form = TelegramForm(initial={
@@ -248,7 +248,7 @@ async def telegram_view(request):
         'end_date': end_date,
         'sort_by': sort_by,
         'sort_direction': sort_direction,
-        'unique_categories': get_unique_categories(),  # Передаем категории в шаблон
+        'unique_categories': get_unique_categories(),
     })
 
 def export_to_excel(request):
@@ -428,9 +428,21 @@ def update_post_category(request):
             'Category ': new_category
         } for item in parsed_data if str(item['post_id']) == post_id]
 
-        # Обновляем модель с новыми данными
-        update_model(new_data)
+        # Обновляем модель с новыми данными, передаём путь к temp_data
+        update_model(new_data, temp_data_path=file_path)
         model, vectorizer = load_model()  # Перезагружаем модель после обновления
 
         return JsonResponse({'success': True, 'message': 'Category updated and model retrained'})
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+def export_model_view(request):
+    """
+    Экспортирует модель и векторизатор в указанную директорию.
+    """
+    if request.method == 'GET':
+        export_path = request.GET.get('path', 'exported_model')
+        success = export_model(export_path)
+        if success:
+            return JsonResponse({'success': True, 'message': f'Model exported to {export_path}'})
+        return JsonResponse({'success': False, 'error': 'Failed to export model'}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
