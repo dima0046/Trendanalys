@@ -193,7 +193,7 @@ async def telegram_view(request):
             elif sort_by == 'category':
                 filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
 
-            paginator = Paginator(filtered_data, 10)
+            paginator = Paginator(filtered_data, 20)
             page_number = request.GET.get('page')
             page_obj = paginator.get_page(page_number)
             return render(request, 'myapp/telegram_form.html', {
@@ -236,7 +236,7 @@ async def telegram_view(request):
     elif sort_by == 'category':
         filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
 
-    paginator = Paginator(filtered_data, 10)
+    paginator = Paginator(filtered_data, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

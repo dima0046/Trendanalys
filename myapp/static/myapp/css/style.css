@@ -40,7 +40,7 @@ html { height: 100%;}
 
 /* Sidebar */
 #sidebar-wrapper {
-  width: 220px;
+  width: 150px;
   flex-shrink: 0;
   background-color: #1a1a1a;
   position: fixed;
@@ -54,7 +54,7 @@ html { height: 100%;}
 
 /* Скрытый сайдбар */
 #wrapper.toggled #sidebar-wrapper {
-  margin-left: -220px;
+  margin-left: -150px;
 }
 
 /* Скрыть скроллбар в сайдбаре */
@@ -65,7 +65,7 @@ html { height: 100%;}
 /* Контент */
 #page-content-wrapper {
   flex-grow: 1;
-  margin-left: 220px;
+  margin-left: 140px;
   padding: 70px 30px 30px 30px;
   transition: all 0.3s ease;
   width: 100%;
@@ -87,7 +87,7 @@ padding: 0;
 .sidebar-nav {
   position: absolute;
   top: 0;
-  width: 220px;
+  width: 150px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -171,6 +171,7 @@ padding: 0;
 }
 .sidebar-brand {
   height: 65px;
+  margin-left: 0px;
   position: relative;
   background:#212531;
   background: linear-gradient(to right bottom, #2f3441 50%, #212531 50%);
