@@ -43,6 +43,9 @@ load_dotenv()
 api_id = os.getenv("API_ID")  
 api_hash = os.getenv("API_HASH")  
 
+# Настройка логирования
+logger = logging.getLogger(__name__)
+
 # Загрузка модели и векторизатора при старте
 model, vectorizer = load_model()
 
@@ -58,7 +61,7 @@ def cleanup_temp_data(folder='temp_data', max_age_seconds=86400):
             file_age = now - os.path.getmtime(file_path)
             if file_age > max_age_seconds:
                 os.remove(file_path)
-                logging.debug(f"Deleted old file: {file_path}")
+                logger.debug(f"Deleted old file: {file_path}")
 
 def extract_username(url):
     match = re.search(r'https://t.me/([^/?]+)', url)
@@ -131,8 +134,8 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         with open(f'temp_data/{data_id}.json', 'w', encoding='utf-8') as f:
             json.dump(data, f)
 
-        logging.debug(f"Fetched data: {data}")
-        logging.debug(f"Data ID: {data_id}")
+        logger.debug(f"Fetched data: {data}")
+        logger.debug(f"Data ID: {data_id}")
 
         return data, data_id
     finally:
@@ -174,8 +177,8 @@ async def telegram_view(request):
                 json.dump(all_data, f)
 
             unique_titles = sorted(list(set(item['title'] for item in all_data)))
-            logging.debug(f"Combined data passed to template: {all_data}")
-            logging.debug(f"Combined Data ID passed to template: {combined_data_id}")
+            logger.debug(f"Combined data passed to template: {all_data}")
+            logger.debug(f"Combined Data ID passed to template: {combined_data_id}")
             
             filtered_data = [item for item in all_data if not filters or 'all' in filters or item['title'] in filters]
             
@@ -301,7 +304,7 @@ async def get_post_details(request):
         limit = 10
 
         if not post_id or not channel_id:
-            logging.error(f"Missing or empty post_id or channel_id: post_id={post_id}, channel_id={channel_id}")
+            logger.error(f"Missing or empty post_id or channel_id: post_id={post_id}, channel_id={channel_id}")
             return JsonResponse({'error': 'Missing post_id or channel_id'}, status=400)
 
         client = TelegramClient('session_name', api_id, api_hash)
@@ -309,15 +312,14 @@ async def get_post_details(request):
             if not client.is_connected():
                 await client.connect()
             if not await client.is_user_authorized():
-                print("Please enter your phone number (e.g., +79991234567): ")
-                phone = input().strip()
-                await client.start(phone=phone)
+                logger.error("Telegram client is not authorized. Please authorize the client first.")
+                return JsonResponse({'error': 'Telegram client is not authorized. Please authorize the client first.'}, status=401)
 
             entity = await client.get_entity(int(channel_id))
             post = await client.get_messages(entity, ids=int(post_id))
 
             if not post:
-                logging.error(f"Post {post_id} not found for channel {channel_id}")
+                logger.error(f"Post {post_id} not found for channel {channel_id}")
                 return JsonResponse({'error': 'Post not found'}, status=404)
 
             if isinstance(post, types.Message):
@@ -325,7 +327,7 @@ async def get_post_details(request):
                 if hasattr(post, 'reactions') and post.reactions:
                     for reaction in post.reactions.results:
                         reaction_type = reaction.reaction
-                        logging.debug(f"Reaction type: {type(reaction_type).__name__}, Reaction: {reaction_type}")
+                        logger.debug(f"Reaction type: {type(reaction_type).__name__}, Reaction: {reaction_type}")
                         if isinstance(reaction_type, types.ReactionEmoji):
                             reactions.append({
                                 'emoticon': reaction_type.emoticon,
@@ -337,7 +339,7 @@ async def get_post_details(request):
                                 'count': reaction.count
                             })
                         else:
-                            logging.warning(f"Unknown reaction type: {type(reaction_type).__name__}")
+                            logger.warning(f"Unknown reaction type: {type(reaction_type).__name__}")
                             reactions.append({
                                 'emoticon': '[Неизвестная реакция]',
                                 'count': reaction.count
@@ -360,9 +362,9 @@ async def get_post_details(request):
                                 'forwards': comment_forwards,
                                 'replies': comment_replies
                             })
-                    logging.debug(f"Fetched {len(comments_data)} comments for post {post_id}")
+                    logger.debug(f"Fetched {len(comments_data)} comments for post {post_id}")
                 else:
-                    logging.debug(f"No replies found for post {post_id}")
+                    logger.debug(f"No replies found for post {post_id}")
 
                 total_comments = len(comments_data)
                 start = (page - 1) * limit
@@ -374,13 +376,13 @@ async def get_post_details(request):
                     'comments': paginated_comments,
                     'total_comments': total_comments
                 }
-                logging.debug(f"Returning response: {response_data}")
+                logger.debug(f"Returning response: {response_data}")
                 return JsonResponse(response_data)
             else:
-                logging.error(f"Invalid post data for post {post_id}")
+                logger.error(f"Invalid post data for post {post_id}")
                 return JsonResponse({'error': 'Invalid post data'}, status=400)
         except Exception as e:
-            logging.error(f"Error in get_post_details: {str(e)}")
+            logger.error(f"Error in get_post_details: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
         finally:
             if client.is_connected():
@@ -388,26 +390,31 @@ async def get_post_details(request):
 
 def update_post_category(request):
     """
-    Обновляет категорию поста и добавляет данные для переобучения модели.
+    Обновляет категорию поста, но не переобучает модель.
+    Переобучение будет выполнено позже, когда пользователь нажмёт "Применить изменения".
     """
-    global model, vectorizer
     if request.method == 'POST':
+        logger.info(f"Received request to update category: {request.POST}")
         data_id = request.POST.get('data_id')
         post_id = request.POST.get('post_id')
         new_category = request.POST.get('category')
 
         if not all([data_id, post_id, new_category]):
+            logger.error("Missing required fields")
             return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-        # Загружаем текущие данные
         file_path = f"temp_data/{data_id}.json"
+        logger.info(f"Reading data from {file_path}")
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 parsed_data = json.load(f)
         except FileNotFoundError:
+            logger.error(f"Data file not found: {file_path}")
             return JsonResponse({'error': 'Data file not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Error reading data file: {str(e)}")
+            return JsonResponse({'error': f'Error reading data file: {str(e)}'}, status=500)
 
-        # Находим и обновляем категорию поста
         updated = False
         for item in parsed_data:
             if str(item['post_id']) == post_id:
@@ -416,23 +423,65 @@ def update_post_category(request):
                 break
 
         if not updated:
+            logger.error(f"Post not found: post_id={post_id}")
             return JsonResponse({'error': 'Post not found'}, status=404)
 
-        # Сохраняем обновленные данные
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(parsed_data, f)
+        logger.info(f"Writing updated data to {file_path}")
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(parsed_data, f)
+        except Exception as e:
+            logger.error(f"Error writing to data file: {str(e)}")
+            return JsonResponse({'error': f'Error writing to data file: {str(e)}'}, status=500)
 
-        # Формируем данные для обновления модели
+        logger.info("Category updated successfully")
+        return JsonResponse({'success': True, 'message': 'Category updated. Click "Apply Changes" to retrain the model.'})
+    logger.error("Invalid request method")
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+def apply_changes(request):
+    """
+    Переобучает модель на основе обновлённых данных после нажатия кнопки "Применить изменения".
+    """
+    global model, vectorizer
+    if request.method == 'POST':
+        logger.info(f"Received request to apply changes: {request.POST}")
+        data_id = request.POST.get('data_id')
+
+        if not data_id:
+            logger.error("Missing data_id")
+            return JsonResponse({'error': 'Missing data_id'}, status=400)
+
+        file_path = f"temp_data/{data_id}.json"
+        logger.info(f"Reading data from {file_path}")
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                parsed_data = json.load(f)
+        except FileNotFoundError:
+            logger.error(f"Data file not found: {file_path}")
+            return JsonResponse({'error': 'Data file not found'}, status=404)
+        except Exception as e:
+            logger.error(f"Error reading data file: {str(e)}")
+            return JsonResponse({'error': f'Error reading data file: {str(e)}'}, status=500)
+
+        # Формируем данные для переобучения
         new_data = [{
             'Text': item['message'],
-            'Category ': new_category
-        } for item in parsed_data if str(item['post_id']) == post_id]
+            'Category ': item['category']
+        } for item in parsed_data]
 
-        # Обновляем модель с новыми данными, передаём путь к temp_data
-        update_model(new_data, temp_data_path=file_path)
-        model, vectorizer = load_model()  # Перезагружаем модель после обновления
+        logger.info("Retraining model with updated data")
+        try:
+            update_model(new_data, temp_data_path=file_path)
+            # Перезагружаем модель после обучения
+            model, vectorizer = load_model()
+            logger.info("Model retrained successfully")
+            return JsonResponse({'success': True, 'message': 'Model retrained successfully'})
+        except Exception as e:
+            logger.error(f"Error retraining model: {str(e)}")
+            return JsonResponse({'error': f'Error retraining model: {str(e)}'}, status=500)
 
-        return JsonResponse({'success': True, 'message': 'Category updated and model retrained'})
+    logger.error("Invalid request method")
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def export_model_view(request):

@@ -108,6 +108,7 @@ def predict_category(text, model, vectorizer):
 # Обновление модели с новыми данными
 def update_model(new_data, temp_data_path=None):
     categorized_data = load_categorized_data()
+    existing_urls = {item['Post Url'] for item in categorized_data if 'Post Url' in item}
 
     # Если передан путь к temp_data, добавляем данные в categorized_2024.json
     if temp_data_path:
@@ -115,24 +116,27 @@ def update_model(new_data, temp_data_path=None):
             with open(temp_data_path, 'r', encoding='utf-8') as f:
                 temp_data = json.load(f)
             for item in temp_data:
-                # Формируем запись в формате categorized_2024.json
+                post_url = item['link']
+                if post_url in existing_urls:
+                    continue  # Пропускаем дубликат
                 new_entry = {
                     "Social": "TG",
                     "Page url": f"https://t.me/{item['title']}",
-                    "Post Url": item['link'],
+                    "Post Url": post_url,
                     "Likes": item['reactions'],
                     "Reposts": item['forwards'],
                     "Comments": item['comments_count'],
                     "Views": item['views'],
-                    "ER Post": 0.0,  # Можно добавить расчёт, если нужно
+                    "ER Post": 0.0,
                     "ER View": 0.0,
                     "VR": 0.0,
                     "Category ": item['category'],
                     "Text": item['message'],
                     "Date": item['date'],
-                    "Type": "text"  # Упрощение, можно уточнить тип
+                    "Type": "text"
                 }
                 categorized_data.append(new_entry)
+                existing_urls.add(post_url)
             save_categorized_data(categorized_data)
         except FileNotFoundError:
             logging.error(f"Temp data file not found at {temp_data_path}")
@@ -148,12 +152,10 @@ def update_model(new_data, temp_data_path=None):
         text = item['Text']
         category = item['Category ']
 
-        # Унифицируем категорию
         if not isinstance(category, str):
             category = str(category)
         category = category.strip().lower()
 
-        # Пропускаем записи, где категория пустая
         if not category:
             continue
 

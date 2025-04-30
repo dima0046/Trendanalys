@@ -41,6 +41,10 @@
     .post-table th:nth-child(7), .post-table td:nth-child(7) { /* Комментарии */
         width: 10%;
     }
+    /* Подсветка изменённых строк */
+    tr.modified {
+        background-color: #fff3cd;
+    }
 </style>
 
 <div class="full-width-container">
@@ -156,12 +160,16 @@
                 </h5>
                 <div class="card-body" id="card-content">
                     {% if parsed_data %}
-                        <form method="get" action="{% url 'export_to_excel' %}">
-                            <input type="hidden" name="data_id" value="{{ data_id }}">
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-download"></i> Excel
-                            </button>
-                        </form>
+                        <div class="d-flex justify-content-between mb-3">
+                            <form method="get" action="{% url 'export_to_excel' %}">
+                                <input type="hidden" name="data_id" value="{{ data_id }}">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-download"></i> Excel
+                                </button>
+                            </form>
+                            <!-- Кнопка "Применить изменения" -->
+                            <button id="apply-changes-btn" class="btn btn-primary" data-data-id="{{ data_id }}" disabled>Применить изменения</button>
+                        </div>
                         <div class="mt-3">
                             <table class="table post-table">
                                 <thead>
@@ -179,7 +187,7 @@
                                     {% for item in parsed_data %}
                                         {% if not filters or 'all' in filters or item.title in filters %}
                                             {% if not category_filters or 'all' in category_filters or item.category in category_filters %}
-                                                <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}">
+                                                <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}">
                                                     <td>{{ item.title }}</td>
                                                     <td>
                                                         <a href="{{ item.link }}">{{ item.post_id }}</a> от {{ item.date }}<br>
@@ -327,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const detailForwards = document.getElementById('detail-forwards');
     const detailReactions = document.getElementById('detail-reactions');
     const detailComments = document.getElementById('detail-comments');
+    const applyChangesBtn = document.getElementById('apply-changes-btn');
 
     // Проверка существования элементов
     console.log('Checking DOM elements:');
@@ -341,8 +350,9 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('detailForwards:', detailForwards);
     console.log('detailReactions:', detailReactions);
     console.log('detailComments:', detailComments);
+    console.log('applyChangesBtn:', applyChangesBtn);
 
-    if (!postDetails || !reactionsList || !reactionsToggle || !commentsList || !commentsPagination || !closeDetails || !tableContainer || !detailViews || !detailForwards || !detailReactions || !detailComments) {
+    if (!postDetails || !reactionsList || !reactionsToggle || !commentsList || !commentsPagination || !closeDetails || !tableContainer || !detailViews || !detailForwards || !detailReactions || !detailComments || !applyChangesBtn) {
         console.error('One or more DOM elements not found:', {
             postDetails,
             reactionsList,
@@ -354,7 +364,8 @@ document.addEventListener('DOMContentLoaded', function() {
             detailViews,
             detailForwards,
             detailReactions,
-            detailComments
+            detailComments,
+            applyChangesBtn
         });
         return;
     }
@@ -363,6 +374,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentChannelId = null;
     let currentPage = 1;
     const commentsPerPage = 10;
+    let hasChanges = false;
 
     async function loadPostDetails(postId, channelId, page = 1) {
         currentPostId = postId;
@@ -674,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Category select functionality
+    // Category select functionality with change tracking
     document.querySelectorAll('.category-select').forEach(select => {
         select.addEventListener('change', async function() {
             const category = this.value;
@@ -701,7 +713,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('Категория обновлена, модель переобучена!');
+                    // Подсвечиваем строку как изменённую
+                    const row = select.closest('tr');
+                    row.classList.add('modified');
+
+                    // Сравниваем новую категорию с исходной
+                    const originalCategory = row.getAttribute('data-original-category');
+                    if (category !== originalCategory) {
+                        hasChanges = true;
+                        applyChangesBtn.disabled = false;
+                    }
+
+                    // alert('Категория обновлена. Нажмите "Применить изменения", чтобы переобучить модель.');
                 } else {
                     alert('Ошибка: ' + result.error);
                 }
@@ -710,6 +733,57 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Ошибка при обновлении категории: ' + error.message);
             }
         });
+    });
+
+    // Обработка нажатия на кнопку "Применить изменения"
+    applyChangesBtn.addEventListener('click', async function() {
+        if (!hasChanges) {
+            alert('Нет изменений для применения.');
+            return;
+        }
+
+        const dataId = this.getAttribute('data-data-id');
+        const button = this;
+        button.disabled = true;
+        button.textContent = 'Обучение модели...';
+
+        const formData = new FormData();
+        formData.append('data_id', dataId);
+
+        try {
+            const response = await fetch('/apply_changes/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: formData
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const result = await response.json();
+
+            if (result.success) {
+                // Удаляем подсветку изменённых строк
+                document.querySelectorAll('tr.modified').forEach(row => {
+                    row.classList.remove('modified');
+                    // Обновляем исходную категорию
+                    const select = row.querySelector('.category-select');
+                    row.setAttribute('data-original-category', select.value);
+                });
+                hasChanges = false;
+                button.disabled = true;
+                alert('Модель успешно переобучена!');
+            } else {
+                alert('Ошибка: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error applying changes:', error);
+            alert('Ошибка при переобучении модели: ' + error.message);
+        } finally {
+            button.textContent = 'Применить изменения';
+        }
     });
 });
 </script>
