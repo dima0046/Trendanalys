@@ -39,6 +39,10 @@ from dotenv import load_dotenv
 # Machine learning imports
 from machine_learning.train_model import load_model, predict_category, update_model, get_unique_categories, export_model
 
+# Image processing
+from PIL import Image
+import io
+
 load_dotenv()
 api_id = os.getenv("API_ID")  
 api_hash = os.getenv("API_HASH")  
@@ -76,6 +80,7 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         if not client.is_connected():
             await client.connect()
         if not await client.is_user_authorized():
+            logger.warning("Telegram client not authorized. Please authorize manually.")
             print("Please enter your phone number (e.g., +79991234567): ")
             phone = input().strip()
             await client.start(phone=phone)
@@ -93,9 +98,43 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         else:
             username = extract_username(channel_url)
 
+        logger.debug(f"Fetching entity for username: {username}")
         entity = await client.get_entity(username)
         data = []
         combined_message = None
+
+        # Загрузка аватарки канала
+        avatar_path = None
+        avatar_dir = os.path.join('temp_data', 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        avatar_filename = f"channel_{entity.id}.jpg"
+        avatar_full_path = os.path.join(avatar_dir, avatar_filename)
+
+        if hasattr(entity, 'photo') and entity.photo:
+            logger.debug(f"Downloading profile photo for channel {entity.id}")
+            try:
+                photo = await client.download_profile_photo(entity, file=avatar_full_path)
+                if photo and os.path.exists(avatar_full_path):
+                    logger.debug(f"Profile photo downloaded to {avatar_full_path}")
+                    # Обработка изображения для оптимизации размера
+                    try:
+                        with Image.open(avatar_full_path) as img:
+                            img = img.resize((50, 50), Image.LANCZOS)
+                            img.save(avatar_full_path, 'JPEG', quality=85)
+                        avatar_path = f"avatars/{avatar_filename}"
+                        logger.info(f"Avatar processed and saved for channel {entity.id}: {avatar_path}")
+                    except Exception as e:
+                        logger.error(f"Failed to process avatar for channel {entity.id}: {str(e)}")
+                        avatar_path = None
+                else:
+                    logger.warning(f"No avatar downloaded for channel {entity.id} (photo={photo})")
+                    avatar_path = None
+            except Exception as e:
+                logger.error(f"Error downloading avatar for channel {entity.id}: {str(e)}")
+                avatar_path = None
+        else:
+            logger.debug(f"No profile photo available for channel {entity.id}")
+            avatar_path = None
 
         async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
             if post.date > end_date:
@@ -124,7 +163,8 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                 'reactions': sum(reaction.count for reaction in post.reactions.results) if hasattr(post, 'reactions') and post.reactions else 0,
                 'forwards': post.forwards if hasattr(post, 'forwards') else 'N/A',
                 'comments_count': comments_count,
-                'category': category
+                'category': category,
+                'avatar': avatar_path
             }
 
             data.append(combined_message)
@@ -134,10 +174,14 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         with open(f'temp_data/{data_id}.json', 'w', encoding='utf-8') as f:
             json.dump(data, f)
 
-        logger.debug(f"Fetched data: {data}")
+        logger.debug(f"Fetched data for {len(data)} posts from channel {entity.title}")
         logger.debug(f"Data ID: {data_id}")
+        logger.debug(f"Avatar paths in data: {[item['avatar'] for item in data if item['avatar']]}")
 
         return data, data_id
+    except Exception as e:
+        logger.error(f"Error fetching data for channel {channel_url}: {str(e)}")
+        raise
     finally:
         if client.is_connected():
             await client.disconnect()
@@ -149,6 +193,7 @@ async def telegram_view(request):
     cleanup_temp_data()
 
     filters = request.GET.getlist('filter')
+    category_filters = request.GET.getlist('category_filter')
     channel_url = request.GET.get('channel_url', '')
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
@@ -177,10 +222,14 @@ async def telegram_view(request):
                 json.dump(all_data, f)
 
             unique_titles = sorted(list(set(item['title'] for item in all_data)))
-            logger.debug(f"Combined data passed to template: {all_data}")
+            logger.debug(f"Combined data passed to template: {len(all_data)} posts")
             logger.debug(f"Combined Data ID passed to template: {combined_data_id}")
             
-            filtered_data = [item for item in all_data if not filters or 'all' in filters or item['title'] in filters]
+            filtered_data = [
+                item for item in all_data 
+                if (not filters or 'all' in filters or item['title'] in filters) and
+                   (not category_filters or 'all' in category_filters or item['category'] in category_filters)
+            ]
             
             # Сортировка данных
             reverse = sort_direction == 'desc'
@@ -201,6 +250,7 @@ async def telegram_view(request):
                 'parsed_data': page_obj,
                 'data_id': combined_data_id,
                 'filters': filters,
+                'category_filters': category_filters,
                 'unique_titles': unique_titles,
                 'channel_url': request.POST.get('channel_url'),
                 'start_date': request.POST.get('start_date'),
@@ -218,12 +268,21 @@ async def telegram_view(request):
     
     parsed_data = []
     if data_id:
-        with open(f'temp_data/{data_id}.json', 'r', encoding='utf-8') as f:
-            parsed_data = json.load(f)
+        try:
+            with open(f'temp_data/{data_id}.json', 'r', encoding='utf-8') as f:
+                parsed_data = json.load(f)
+            logger.debug(f"Loaded parsed data with {len(parsed_data)} posts")
+            logger.debug(f"Avatar paths in parsed data: {[item['avatar'] for item in parsed_data if item['avatar']]}")
+        except FileNotFoundError:
+            logger.error(f"Data file not found: temp_data/{data_id}.json")
     
     unique_titles = sorted(list(set(item['title'] for item in parsed_data)))
     
-    filtered_data = [item for item in parsed_data if not filters or 'all' in filters or item['title'] in filters]
+    filtered_data = [
+        item for item in parsed_data 
+        if (not filters or 'all' in filters or item['title'] in filters) and
+           (not category_filters or 'all' in category_filters or item['category'] in category_filters)
+    ]
     
     # Сортировка данных
     reverse = sort_direction == 'desc'
@@ -245,6 +304,7 @@ async def telegram_view(request):
         'parsed_data': page_obj,
         'data_id': data_id,
         'filters': filters,
+        'category_filters': category_filters,
         'unique_titles': unique_titles,
         'channel_url': channel_url,
         'start_date': start_date,
