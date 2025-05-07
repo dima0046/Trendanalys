@@ -160,10 +160,23 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                 logger.debug(f"Пропуск поста {post.id} так как дата {post.date} позже end_date {end_date}")
                 break
 
-            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message:
-                if combined_message:
-                    combined_message['message'] += f"\n[Изображение: {post.media.photo.id}]"
-                    combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
+            # Определение типа поста
+            post_type = 'text'
+            if post.media:
+                if isinstance(post.media, types.MessageMediaPhoto):
+                    post_type = 'image'
+                elif isinstance(post.media, types.MessageMediaDocument) and post.media.document.mime_type.startswith('video'):
+                    post_type = 'video'
+
+            message_text = post.message if post.message else 'N/A'
+            # Игнорируем посты, которые являются только изображениями без текста
+            if message_text == 'N/A' and post_type == 'image' and not (post.grouped_id and combined_message):
+                logger.debug(f"Игнорирование поста {post.id}: только изображение без текста")
+                continue
+
+            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message and combined_message:
+                combined_message['message'] += f"\n[Изображение: {post.media.photo.id}]"
+                combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
                 continue
 
             comments_count = post.replies.replies if hasattr(post, 'replies') and post.replies else 0
@@ -171,10 +184,9 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
             forwards_count = post.forwards if hasattr(post, 'forwards') else 0
             views = post.views if hasattr(post, 'views') else 0
 
-            logger.debug(f"Пост {post.id}: comments={comments_count}, reactions={reactions_count}, forwards={forwards_count}, views={views}")
+            logger.debug(f"Пост {post.id}: comments={comments_count}, reactions={reactions_count}, forwards={forwards_count}, views={views}, type={post_type}")
 
-            message_text = post.message if post.message else 'N/A'
-            category = predict_category(message_text, model, vectorizer)
+            category = predict_category(message_text, model, vectorizer) if message_text != 'N/A' else 'N/A'
 
             # Расчёт метрик
             post_engagement = reactions_count + forwards_count + comments_count
@@ -203,6 +215,7 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                 'er_post': round(er_post, 2),
                 'er_view': round(er_view, 2),
                 'vr_post': round(vr_post, 2),
+                'type': post_type,
                 'subscribers': subscriber_count
             }
 
