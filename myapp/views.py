@@ -169,12 +169,15 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                     post_type = 'video'
 
             message_text = post.message if post.message else 'N/A'
-            # Игнорируем посты, которые являются только изображениями без текста
-            if message_text == 'N/A' and post_type == 'image' and not (post.grouped_id and combined_message):
-                logger.debug(f"Игнорирование поста {post.id}: только изображение без текста")
+            # Игнорируем посты, которые являются только медиа без текста или вложенными медиа в группе
+            if message_text == 'N/A' and (not post.grouped_id or (combined_message and combined_message.get('post_id') != post.id)):
+                logger.debug(f"Игнорирование поста {post.id}: только медиа без текста или вложенный файл (тип: {post_type})")
+                if post.grouped_id and combined_message:
+                    combined_message['message'] += f"\n[{post_type.capitalize()}: {post.id}]"
+                    combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
                 continue
 
-            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message and combined_message:
+            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message and combined_message and combined_message.get('message') != 'N/A':
                 combined_message['message'] += f"\n[Изображение: {post.media.photo.id}]"
                 combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
                 continue
