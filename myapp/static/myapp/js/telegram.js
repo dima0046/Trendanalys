@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const detailForwards = document.getElementById('detail-forwards');
     const detailReactions = document.getElementById('detail-reactions');
     const detailComments = document.getElementById('detail-comments');
+    const detailErPost = document.getElementById('detail-er-post');
+    const detailErView = document.getElementById('detail-er-view');
+    const detailVrPost = document.getElementById('detail-vr-post');
     const applyChangesBtn = document.getElementById('apply-changes-btn');
     const resetChangesBtn = document.getElementById('reset-changes-btn');
 
@@ -79,6 +82,9 @@ document.addEventListener('DOMContentLoaded', function () {
             detailForwards.textContent = row.getAttribute('data-forwards') || 'N/A';
             detailReactions.textContent = row.getAttribute('data-reactions') || '0';
             detailComments.textContent = row.getAttribute('data-comments') || '0';
+            detailErPost.textContent = row.getAttribute('data-er-post') || '0';
+            detailErView.textContent = row.getAttribute('data-er-view') || '0';
+            detailVrPost.textContent = row.getAttribute('data-vr-post') || '0';
 
             reactionsList.innerHTML = '';
             reactionsToggle.innerHTML = '';
@@ -314,30 +320,31 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.addEventListener('click', function (e) {
-        const target = e.target;
-        if (target && target.classList && target.classList.contains('read-more')) {
-            e.preventDefault();
-            e.stopPropagation();
-            const parentTd = target.parentElement;
+    document.addEventListener('click', function (event) {
+        if (event.target.classList.contains('read-more')) {
+            event.preventDefault(); // Prevent the default anchor behavior
+
+            // Find the parent <td> to locate the sibling spans
+            const parentTd = event.target.closest('td');
             const shortText = parentTd.querySelector('.post-text-short');
             const fullText = parentTd.querySelector('.post-text-full');
-            const isExpanded = target.getAttribute('data-expanded') === 'true';
+            const readMoreLink = event.target;
 
-            if (!isExpanded) {
-                shortText.style.display = 'none';
-                fullText.style.display = 'inline';
-                target.textContent = 'свернуть';
-                target.setAttribute('data-expanded', 'true');
-                parentTd.removeChild(target);
-                parentTd.appendChild(target);
-            } else {
+            // Get the current state from data-expanded attribute
+            const isExpanded = readMoreLink.getAttribute('data-expanded') === 'true';
+
+            if (isExpanded) {
+                // Collapse: Show short text, hide full text
                 shortText.style.display = 'inline';
                 fullText.style.display = 'none';
-                target.textContent = 'читать далее';
-                target.setAttribute('data-expanded', 'false');
-                parentTd.removeChild(target);
-                shortText.insertAdjacentElement('afterend', target);
+                readMoreLink.textContent = 'читать далее';
+                readMoreLink.setAttribute('data-expanded', 'false');
+            } else {
+                // Expand: Hide short text, show full text
+                shortText.style.display = 'none';
+                fullText.style.display = 'inline';
+                readMoreLink.textContent = 'свернуть';
+                readMoreLink.setAttribute('data-expanded', 'true');
             }
         }
     });

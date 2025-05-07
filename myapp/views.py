@@ -17,6 +17,7 @@ import time
 from telethon import TelegramClient
 from telethon import utils
 from telethon import types
+from telethon import functions
 
 # Logging
 import logging
@@ -80,15 +81,17 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         if not client.is_connected():
             await client.connect()
         if not await client.is_user_authorized():
-            logger.warning("Telegram client not authorized. Please authorize manually.")
-            print("Please enter your phone number (e.g., +79991234567): ")
+            logger.warning("Клиент Telegram не авторизован. Пожалуйста, авторизуйтесь вручную.")
+            print("Введите номер телефона (например, +79991234567): ")
             phone = input().strip()
             await client.start(phone=phone)
 
         if start_date:
             start_date = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+            logger.debug(f"Дата начала установлена на: {start_date}")
         if end_date:
             end_date = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
+            logger.debug(f"Дата окончания установлена на: {end_date}")
 
         if "https://t.me/" in channel_url:
             username = channel_url.split('/')[-1]
@@ -98,12 +101,25 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         else:
             username = extract_username(channel_url)
 
-        logger.debug(f"Fetching entity for username: {username}")
+        logger.debug(f"Получение сущности для username: {username}")
         entity = await client.get_entity(username)
         data = []
         combined_message = None
 
-        # Загрузка аватарки канала
+        # Получение количества подписчиков
+        subscriber_count = 0
+        try:
+            full_channel = await client(functions.channels.GetFullChannelRequest(channel=entity))
+            subscriber_count = int(getattr(full_channel.full_chat, 'participants_count', 0))
+            logger.debug(f"Количество подписчиков из GetFullChannelRequest для {entity.title}: {subscriber_count}")
+        except Exception as e:
+            logger.error(f"Ошибка получения количества подписчиков для канала {entity.id}: {str(e)}")
+            subscriber_count = 0
+
+        if subscriber_count == 0:
+            logger.warning(f"Не удалось получить валидное количество подписчиков для канала {entity.title}. Метрики будут равны 0. Убедитесь, что клиент имеет разрешение 'Просмотр статистики канала'.")
+
+        # Загрузка аватара канала
         avatar_path = None
         avatar_dir = os.path.join('temp_data', 'avatars')
         os.makedirs(avatar_dir, exist_ok=True)
@@ -111,33 +127,37 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         avatar_full_path = os.path.join(avatar_dir, avatar_filename)
 
         if hasattr(entity, 'photo') and entity.photo:
-            logger.debug(f"Downloading profile photo for channel {entity.id}")
+            logger.debug(f"Загрузка фото профиля для канала {entity.id}")
             try:
                 photo = await client.download_profile_photo(entity, file=avatar_full_path)
                 if photo and os.path.exists(avatar_full_path):
-                    logger.debug(f"Profile photo downloaded to {avatar_full_path}")
-                    # Обработка изображения для оптимизации размера
+                    logger.debug(f"Фото профиля загружено в {avatar_full_path}")
                     try:
                         with Image.open(avatar_full_path) as img:
                             img = img.resize((50, 50), Image.LANCZOS)
                             img.save(avatar_full_path, 'JPEG', quality=85)
                         avatar_path = f"avatars/{avatar_filename}"
-                        logger.info(f"Avatar processed and saved for channel {entity.id}: {avatar_path}")
+                        logger.info(f"Аватар обработан и сохранён для канала {entity.id}: {avatar_path}")
                     except Exception as e:
-                        logger.error(f"Failed to process avatar for channel {entity.id}: {str(e)}")
+                        logger.error(f"Ошибка обработки аватара для канала {entity.id}: {str(e)}")
                         avatar_path = None
                 else:
-                    logger.warning(f"No avatar downloaded for channel {entity.id} (photo={photo})")
+                    logger.warning(f"Аватар не загружен для канала {entity.id} (photo={photo})")
                     avatar_path = None
             except Exception as e:
-                logger.error(f"Error downloading avatar for channel {entity.id}: {str(e)}")
+                logger.error(f"Ошибка загрузки аватара для канала {entity.id}: {str(e)}")
                 avatar_path = None
         else:
-            logger.debug(f"No profile photo available for channel {entity.id}")
+            logger.debug(f"Фото профиля недоступно для канала {entity.id}")
             avatar_path = None
 
+        total_engagement = 0
+        total_comments = 0
+        post_count = 0
+
         async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
-            if post.date > end_date:
+            if end_date and post.date and post.date > end_date:
+                logger.debug(f"Пропуск поста {post.id} так как дата {post.date} позже end_date {end_date}")
                 break
 
             if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message:
@@ -147,10 +167,25 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                 continue
 
             comments_count = post.replies.replies if hasattr(post, 'replies') and post.replies else 0
+            reactions_count = sum(reaction.count for reaction in post.reactions.results) if hasattr(post, 'reactions') and post.reactions else 0
+            forwards_count = post.forwards if hasattr(post, 'forwards') else 0
+            views = post.views if hasattr(post, 'views') else 0
+
+            logger.debug(f"Пост {post.id}: comments={comments_count}, reactions={reactions_count}, forwards={forwards_count}, views={views}")
 
             message_text = post.message if post.message else 'N/A'
-            # Автоматическая категоризация с помощью модели
             category = predict_category(message_text, model, vectorizer)
+
+            # Расчёт метрик
+            post_engagement = reactions_count + forwards_count + comments_count
+            total_engagement += post_engagement
+            total_comments += comments_count
+            post_count += 1
+
+            er_post = (post_engagement / subscriber_count * 100) if subscriber_count > 0 and post_engagement > 0 else 0
+            er_view = (post_engagement / views * 100) if views > 0 and post_engagement > 0 else 0
+            vr_post = (views / subscriber_count * 100) if subscriber_count > 0 and views > 0 else 0
+            logger.debug(f"Пост {post.id}: engagement={post_engagement}, er_post={er_post}%, er_view={er_view}%, vr_post={vr_post}%")
 
             combined_message = {
                 'title': entity.title,
@@ -159,28 +194,38 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
                 'date': post.date.strftime('%Y-%m-%d %H:%M:%S') if post.date else 'N/A',
                 'message': message_text,
                 'link': f"https://t.me/{entity.username}/{post.id}" if entity.username else f"https://t.me/c/{entity.id}/{post.id}",
-                'views': post.views if hasattr(post, 'views') else 'N/A',
-                'reactions': sum(reaction.count for reaction in post.reactions.results) if hasattr(post, 'reactions') and post.reactions else 0,
-                'forwards': post.forwards if hasattr(post, 'forwards') else 'N/A',
+                'views': views,
+                'reactions': reactions_count,
+                'forwards': forwards_count,
                 'comments_count': comments_count,
                 'category': category,
-                'avatar': avatar_path
+                'avatar': avatar_path,
+                'er_post': round(er_post, 2),
+                'er_view': round(er_view, 2),
+                'vr_post': round(vr_post, 2),
+                'subscribers': subscriber_count
             }
 
             data.append(combined_message)
+
+        # Расчёт TR
+        tr = (total_comments / subscriber_count / post_count * 100) if post_count > 0 and subscriber_count > 0 else 0
+        logger.debug(f"Расчёт TR: total_comments={total_comments}, subscriber_count={subscriber_count}, post_count={post_count}, tr={tr}%")
+        for item in data:
+            item['tr'] = round(tr, 2)
 
         data_id = str(uuid.uuid4())
         os.makedirs('temp_data', exist_ok=True)
         with open(f'temp_data/{data_id}.json', 'w', encoding='utf-8') as f:
             json.dump(data, f)
 
-        logger.debug(f"Fetched data for {len(data)} posts from channel {entity.title}")
-        logger.debug(f"Data ID: {data_id}")
-        logger.debug(f"Avatar paths in data: {[item['avatar'] for item in data if item['avatar']]}")
+        logger.debug(f"Получены данные для {len(data)} постов из канала {entity.title}")
+        logger.debug(f"ID данных: {data_id}")
+        logger.debug(f"Пути аватаров в данных: {[item['avatar'] for item in data if item['avatar']]}")
 
         return data, data_id
     except Exception as e:
-        logger.error(f"Error fetching data for channel {channel_url}: {str(e)}")
+        logger.error(f"Ошибка получения данных для канала {channel_url}: {str(e)}")
         raise
     finally:
         if client.is_connected():

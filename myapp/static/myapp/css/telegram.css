@@ -4,8 +4,8 @@
 :root {
     --filter-width: 300px;
     --post-details-width: 300px;
-    --table-width: 1400px;
-    --table-shrunk-width: 1020px;
+    --table-width: 1600px;
+    --table-shrunk-width: 1220px;
     --active-row-bg: #e0f7fa;
     --modified-row-bg: #fff3cd;
     --transition-speed: 0.3s;
@@ -33,10 +33,12 @@
     max-width: var(--table-width);
     transition: width var(--transition-speed) ease;
     position: relative;
+    overflow-x: auto; /* Добавляем горизонтальную прокрутку */
 }
 
 #table-container.shrunk {
     max-width: var(--table-shrunk-width);
+    overflow-x: auto; /* Сохраняем прокрутку при сужении */
 }
 
 /* Боковая панель с комментариями */
@@ -65,6 +67,7 @@
 .post-table {
     table-layout: fixed;
     width: 100%;
+    min-width: 1200px; /* Минимальная ширина таблицы */
 }
 
 .post-table th:nth-child(1), .post-table td:nth-child(1) {
@@ -73,7 +76,7 @@
 }
 
 .post-table th:nth-child(2), .post-table td:nth-child(2) {
-    width: 800px;
+    width: 600px; /* Уменьшаем ширину для компенсации новых столбцов */
 }
 
 .post-table th:nth-child(3), .post-table td:nth-child(3) {
@@ -83,8 +86,11 @@
 .post-table th:nth-child(4), .post-table td:nth-child(4),
 .post-table th:nth-child(5), .post-table td:nth-child(5),
 .post-table th:nth-child(6), .post-table td:nth-child(6),
-.post-table th:nth-child(7), .post-table td:nth-child(7) {
-    width: 90px;
+.post-table th:nth-child(7), .post-table td:nth-child(7),
+.post-table th:nth-child(8), .post-table td:nth-child(8),
+.post-table th:nth-child(9), .post-table td:nth-child(9),
+.post-table th:nth-child(10), .post-table td:nth-child(10) {
+    width: 80px; /* Уменьшаем ширину столбцов метрик */
     text-align: center;
 }
 
@@ -98,14 +104,17 @@
 }
 
 #table-container.shrunk .post-table th:nth-child(3), #table-container.shrunk .post-table td:nth-child(3) {
-    width: 200px;
+    width: 150px;
 }
 
 #table-container.shrunk .post-table th:nth-child(4), #table-container.shrunk .post-table td:nth-child(4),
 #table-container.shrunk .post-table th:nth-child(5), #table-container.shrunk .post-table td:nth-child(5),
 #table-container.shrunk .post-table th:nth-child(6), #table-container.shrunk .post-table td:nth-child(6),
-#table-container.shrunk .post-table th:nth-child(7), #table-container.shrunk .post-table td:nth-child(7) {
-    width: 90px;
+#table-container.shrunk .post-table th:nth-child(7), #table-container.shrunk .post-table td:nth-child(7),
+#table-container.shrunk .post-table th:nth-child(8), #table-container.shrunk .post-table td:nth-child(8),
+#table-container.shrunk .post-table th:nth-child(9), #table-container.shrunk .post-table td:nth-child(9),
+#table-container.shrunk .post-table th:nth-child(10), #table-container.shrunk .post-table td:nth-child(10) {
+    width: 60px;
 }
 
 tr.modified {
@@ -274,7 +283,10 @@ tr.active-post {
     .post-table th:nth-child(4), .post-table td:nth-child(4),
     .post-table th:nth-child(5), .post-table td:nth-child(5),
     .post-table th:nth-child(6), .post-table td:nth-child(6),
-    .post-table th:nth-child(7), .post-table td:nth-child(7) {
+    .post-table th:nth-child(7), .post-table td:nth-child(7),
+    .post-table th:nth-child(8), .post-table td:nth-child(8),
+    .post-table th:nth-child(9), .post-table td:nth-child(9),
+    .post-table th:nth-child(10), .post-table td:nth-child(10) {
         width: 50px;
     }
 

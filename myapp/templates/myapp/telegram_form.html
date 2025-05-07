@@ -120,19 +120,22 @@
                                     <th class="text-center"><i class="fas fa-share"></i></th>
                                     <th class="text-center"><i class="fas fa-poo"></i></th>
                                     <th class="text-center"><i class="fas fa-comment"></i></th>
+                                    <th class="text-center">ERpost</th>
+                                    <th class="text-center">ERview</th>
+                                    <th class="text-center">VRpost (%)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in parsed_data %}
                                     {% if not filters or 'all' in filters or item.title in filters %}
                                         {% if not category_filters or 'all' in category_filters or item.category in category_filters %}
-                                            <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}">
+                                            <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}" data-er-post="{{ item.er_post }}" data-er-view="{{ item.er_view }}" data-vr-post="{{ item.vr_post }}">
                                                 <td>
                                                     <img class="channel-avatar" src="{% if item.avatar %}/static/{{ item.avatar }}{% else %}{% static 'myapp/images/default_avatar.jpg' %}{% endif %}" alt="{{ item.title }} avatar">
                                                 </td>
                                                 <td>
                                                     <div class="post-meta">
-                                                        <a href="{{ item.link }}">{{ item.title }}</a> 
+                                                        <a href="{{ item.link }}">{{ item.title }}</a> (подписчиков: {{ item.subscribers }})
                                                         пост <a href="{{ item.link }}">{{ item.post_id }}</a> 
                                                         от {{ item.date }}
                                                     </div>
@@ -153,6 +156,9 @@
                                                 <td class="text-center">{{ item.forwards }}</td>
                                                 <td class="text-center">{{ item.reactions }}</td>
                                                 <td class="text-center">{{ item.comments_count }}</td>
+                                                <td class="text-center">{{ item.er_post }}</td>
+                                                <td class="text-center">{{ item.er_view }}</td>
+                                                <td class="text-center">{{ item.vr_post }}</td>
                                             </tr>
                                         {% endif %}
                                     {% endif %}
@@ -176,7 +182,7 @@
                             {% endif %}
                             {% for num in parsed_data.paginator.page_range %}
                                 {% if parsed_data.number == num %}
-                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    <li class="pageLik-item active"><span class="page-link">{{ num }}</span></li>
                                 {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
                                     <li class="page-item">
                                         <a class="page-link pagination-link" href="?page={{ num }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}{% for filter in filters %}&filter={{ filter }}{% endfor %}{% for category_filter in category_filters %}&category_filter={{ category_filter }}{% endfor %}">{{ num }}</a>
@@ -228,6 +234,15 @@
                     </li>
                     <li class="list-group-item">
                         <i class="fas fa-comment"></i> Комментарии: <span id="detail-comments"></span>
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-chart-line"></i> ERpost: <span id="detail-er-post"></span>
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-chart-bar"></i> ERview: <span id="detail-er-view"></span>
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-eye"></i> VRpost (%): <span id="detail-vr-post"></span>
                     </li>
                 </ul>
                 <h5>Реакции:</h5>
