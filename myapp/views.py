@@ -255,7 +255,7 @@ async def telegram_view(request):
 
     filters = request.GET.getlist('filter')
     category_filters = request.GET.getlist('category_filter')
-    channel_url = request.GET.get('channel_url', '')
+    channel_url = request.GET.get('channel_url', '').strip()
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     data_id = request.GET.get('data_id', '')
@@ -265,14 +265,13 @@ async def telegram_view(request):
     if request.method == 'POST':
         form = TelegramForm(request.POST)
         if form.is_valid():
-            channel_urls = form.cleaned_data['channel_url'].strip().split('\n')
+            channel_urls = [url.strip() for url in form.cleaned_data['channel_url'].split('\n') if url.strip()]
             start_date = form.cleaned_data['start_date']
             end_date = form.cleaned_data['end_date']
             all_data = []
             data_id_list = []
 
             for channel_url in channel_urls:
-                channel_url = channel_url.strip()
                 if channel_url:
                     data, data_id = await fetch_telegram_data(channel_url, start_date, end_date)
                     all_data.extend(data)
@@ -313,9 +312,9 @@ async def telegram_view(request):
                 'filters': filters,
                 'category_filters': category_filters,
                 'unique_titles': unique_titles,
-                'channel_url': request.POST.get('channel_url'),
-                'start_date': request.POST.get('start_date'),
-                'end_date': request.POST.get('end_date'),
+                'channel_url': '\n'.join(channel_urls),  # Возвращаем ссылки построчно
+                'start_date': start_date,
+                'end_date': end_date,
                 'sort_by': sort_by,
                 'sort_direction': sort_direction,
                 'unique_categories': get_unique_categories(),

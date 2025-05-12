@@ -29,26 +29,27 @@
 
 /* Контейнер таблицы */
 #table-container {
-    width: calc(100% - var(--filter-width));
+    width: calc(100% - var(--post-details-width));
     max-width: var(--table-width);
     transition: width var(--transition-speed) ease;
     position: relative;
-    overflow-x: auto; /* Добавляем горизонтальную прокрутку */
+    overflow-x: auto;
 }
 
 #table-container.shrunk {
+    width: calc(100% - var(--post-details-width));
     max-width: var(--table-shrunk-width);
-    overflow-x: auto; /* Сохраняем прокрутку при сужении */
+    overflow-x: auto;
 }
 
 /* Боковая панель с комментариями */
 .post-details {
     width: var(--post-details-width);
-    position: absolute;
+    position: fixed; /* Закрепляем панель справа */
     right: 0;
-    top: 0;
-    height: calc(100vh - 60px);
-    overflow-y: auto;
+    top: 60px; /* Отступ от верхнего края (учитываем header) */
+    height: calc(100vh - 60px); /* Высота с учётом шапки */
+    overflow-y: auto; /* Прокрутка только содержимого */
     background-color: #fff;
     padding: 15px;
     border-left: 1px solid #ddd;
@@ -71,12 +72,12 @@
 }
 
 .post-table th:nth-child(1), .post-table td:nth-child(1) {
-    width: 50px;
+    width: 60px;
     text-align: center;
 }
 
 .post-table th:nth-child(2), .post-table td:nth-child(2) {
-    width: 600px; /* Уменьшаем ширину для компенсации новых столбцов */
+    width: 590px; /* Уменьшаем ширину для компенсации новых столбцов */
 }
 
 .post-table th:nth-child(3), .post-table td:nth-child(3) {

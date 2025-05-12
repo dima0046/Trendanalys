@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const detailVrPost = document.getElementById('detail-vr-post');
     const applyChangesBtn = document.getElementById('apply-changes-btn');
     const resetChangesBtn = document.getElementById('reset-changes-btn');
+    const scrollToTopBtn = document.getElementById('scroll-to-top');
 
     // Переменные состояния
     let enableLoader = false;
@@ -51,14 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Проверка изменений в категориях
     function checkForChanges() {
-        hasChanges = false;
-        postRows.forEach(row => {
-            const postId = row.getAttribute('data-post-id');
-            const originalCategory = row.getAttribute('data-original-category');
-            if (categoryChanges[postId] && categoryChanges[postId] !== originalCategory) {
-                hasChanges = true;
-            }
-        });
+        hasChanges = Object.keys(categoryChanges).length > 0;
         applyChangesBtn.disabled = !hasChanges;
         resetChangesBtn.style.display = hasChanges ? 'block' : 'none';
     }
@@ -191,12 +185,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     const meta = document.createElement('small');
                     meta.className = 'text-muted';
-                    meta.innerHTML = `
-                        Автор: ${comment.author || 'Аноним'} | 
-                        Дата: ${comment.date} | 
-                        Репостов: ${comment.forwards} | 
-                        Ответов: ${comment.replies}
-                    `;
+                    meta.innerHTML = `Автор: ${comment.author || 'Аноним'} | Дата: ${comment.date} | Репостов: ${comment.forwards} | Ответов: ${comment.replies}`;
                     li.appendChild(meta);
 
                     commentsList.appendChild(li);
@@ -258,16 +247,12 @@ document.addEventListener('DOMContentLoaded', function () {
         enableLoader = !enableLoader;
         if (enableLoader) {
             volumeToggle.classList.remove('fa-volume-mute');
-            volumeToggle.classList.add('fa-volume-down');
-            audio.muted = false;
-            volumeToggle.classList.remove('fa-volume-mute');
             volumeToggle.classList.add('fa-volume-up');
+            audio.muted = false;
         } else {
-            volumeToggle.classList.remove('fa-volume-down');
-            volumeToggle.classList.add('fa-volume-mute');
-            audio.muted = true;
             volumeToggle.classList.remove('fa-volume-up');
             volumeToggle.classList.add('fa-volume-mute');
+            audio.muted = true;
         }
     });
 
@@ -322,25 +307,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('click', function (event) {
         if (event.target.classList.contains('read-more')) {
-            event.preventDefault(); // Prevent the default anchor behavior
-
-            // Find the parent <td> to locate the sibling spans
+            event.preventDefault(); // Блокируем стандартное поведение
             const parentTd = event.target.closest('td');
             const shortText = parentTd.querySelector('.post-text-short');
             const fullText = parentTd.querySelector('.post-text-full');
             const readMoreLink = event.target;
 
-            // Get the current state from data-expanded attribute
             const isExpanded = readMoreLink.getAttribute('data-expanded') === 'true';
 
             if (isExpanded) {
-                // Collapse: Show short text, hide full text
                 shortText.style.display = 'inline';
                 fullText.style.display = 'none';
                 readMoreLink.textContent = 'читать далее';
                 readMoreLink.setAttribute('data-expanded', 'false');
             } else {
-                // Expand: Hide short text, show full text
                 shortText.style.display = 'none';
                 fullText.style.display = 'inline';
                 readMoreLink.textContent = 'свернуть';
@@ -391,14 +371,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.category-select').forEach(select => {
         const postId = select.getAttribute('data-post-id');
+        const row = select.closest('tr');
+        const originalCategory = row.getAttribute('data-original-category');
+
+        // Устанавливаем начальное значение, если есть изменения
         if (categoryChanges[postId]) {
             select.value = categoryChanges[postId];
-            const row = select.closest('tr');
-            row.classList.add('modified');
+            if (categoryChanges[postId] !== originalCategory) {
+                row.classList.add('modified');
+            }
         }
-    });
 
-    document.querySelectorAll('.category-select').forEach(select => {
         select.addEventListener('change', function () {
             const category = this.value;
             const postId = this.getAttribute('data-post-id');
@@ -498,4 +481,20 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
         });
     });
+
+    // Логика кнопки "Прокрутка вверх"
+    window.addEventListener('scroll', function () {
+        if (window.scrollY > 300) {
+            scrollToTopBtn.style.display = 'block';
+        } else {
+            scrollToTopBtn.style.display = 'none';
+        }
+    });
+
+    scrollToTopBtn.addEventListener('click', function () {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Инициализация
+    checkForChanges();
 });
