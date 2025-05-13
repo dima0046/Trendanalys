@@ -37,34 +37,40 @@
 
     /* Таблица */
     .post-table {
-        table-layout: fixed;
+        table-layout: auto; /* Позволяет таблице адаптироваться */
         width: 100%;
-        min-width: 900px; /* Уменьшаем минимальную ширину таблицы */
+        min-width: 900px;
     }
     .post-table th:nth-child(1), .post-table td:nth-child(1) {
-        width: 70px; /* Канал */
-        text-align: center;
-    }
-    .post-table th:nth-child(2), .post-table td:nth-child(2) {
-        width: 500px; /* Пост */
-    }
-    .post-table th:nth-child(3), .post-table td:nth-child(3) {
-        width: 100px; /* Категория */
-    }
-    .post-table th:nth-child(4), .post-table td:nth-child(4),
-    .post-table th:nth-child(5), .post-table td:nth-child(5),
-    .post-table th:nth-child(6), .post-table td:nth-child(6),
-    .post-table th:nth-child(7), .post-table td:nth-child(7),
-    .post-table th:nth-child(8), .post-table td:nth-child(8),
-    .post-table th:nth-child(9), .post-table td:nth-child(9),
-    .post-table th:nth-child(10), .post-table td:nth-child(10) {
-        width: 80px; /* Метрики */
-        text-align: center;
-    }
-    .post-table th:nth-child(11), .post-table td:nth-child(11) {
-        width: 50px; /* Новый столбец для кнопки */
-        text-align: center;
-    }
+    width: 50px; /* Канал */
+    text-align: center;
+    flex-shrink: 0; /* Фиксируем ширину */
+}
+.post-table th:nth-child(2), .post-table td:nth-child(2) {
+    width: 50%; /* Пост занимает половину доступной ширины */
+    min-width: 200px; /* Минимальная ширина для читаемости */
+}
+.post-table th:nth-child(3), .post-table td:nth-child(3) {
+    width: 110px; /* Категория */
+    text-align: center;
+    flex-shrink: 0;
+}
+.post-table th:nth-child(4), .post-table td:nth-child(4),
+.post-table th:nth-child(5), .post-table td:nth-child(5),
+.post-table th:nth-child(6), .post-table td:nth-child(6),
+.post-table th:nth-child(7), .post-table td:nth-child(7),
+.post-table th:nth-child(8), .post-table td:nth-child(8),
+.post-table th:nth-child(9), .post-table td:nth-child(9),
+.post-table th:nth-child(10), .post-table td:nth-child(10) {
+    width: 80px; /* Метрики */
+    text-align: center;
+    flex-shrink: 0;
+}
+.post-table th:nth-child(11), .post-table td:nth-child(11) {
+    width: 50px; /* Детали */
+    text-align: center;
+    flex-shrink: 0;
+}
 
     tr.modified {
         background-color: #fff3cd;
@@ -177,41 +183,44 @@
         }
         /* Таблица адаптируется */
         .post-table th:nth-child(2), .post-table td:nth-child(2) {
-            width: 400px;
+            width: 40%; /* Уменьшаем до 40% на планшетах */
+            min-width: 200px;
         }
     }
 
     /* Адаптивность для мобильных устройств (меньше 768px) */
     @media (max-width: 768px) {
-        .full-width-container {
-            width: 100%;
-        }
-        .filters-container {
-            width: 100%;
-        }
-        #table-container {
-            width: 100%;
-        }
-        /* Таблица для мобильных */
-        .post-table th:nth-child(1), .post-table td:nth-child(1) {
-            width: 40px;
-        }
-        .post-table th:nth-child(2), .post-table td:nth-child(2) {
-            width: 250px;
-        }
-        .post-table th:nth-child(3), .post-table td:nth-child(3) {
-            width: 50px;
-        }
-        .post-table th:nth-child(4), .post-table td:nth-child(4),
-        .post-table th:nth-child(5), .post-table td:nth-child(5),
-        .post-table th:nth-child(6), .post-table td:nth-child(6),
-        .post-table th:nth-child(7), .post-table td:nth-child(7),
-        .post-table th:nth-child(8), .post-table td:nth-child(8),
-        .post-table th:nth-child(9), .post-table td:nth-child(9),
-        .post-table th:nth-child(10), .post-table td:nth-child(10) {
-            width: 50px;
-        }
+    .full-width-container {
+        width: 100%;
     }
+    .filters-container {
+        width: 100%;
+    }
+    #table-container {
+        width: 100%;
+    }
+    /* Таблица для мобильных */
+    .post-table th:nth-child(1), .post-table td:nth-child(1) {
+        width: 40px;
+    }
+    .post-table th:nth-child(2), .post-table td:nth-child(2) {
+        width: 50%; /* На мобильных занимает 50% */
+        min-width: 150px;
+    }
+    .post-table th:nth-child(3), .post-table td:nth-child(3) {
+        width: 40px;
+    }
+    .post-table th:nth-child(4), .post-table td:nth-child(4),
+    .post-table th:nth-child(5), .post-table td:nth-child(5),
+    .post-table th:nth-child(6), .post-table td:nth-child(6),
+    .post-table th:nth-child(7), .post-table td:nth-child(7),
+    .post-table th:nth-child(8), .post-table td:nth-child(8),
+    .post-table th:nth-child(9), .post-table td:nth-child(9),
+    .post-table th:nth-child(10), .post-table td:nth-child(10) {
+        width: 50px;
+    }
+}
+    
 </style>
 
 <div class="full-width-container">
@@ -332,7 +341,7 @@
                                     <th class="text-center"><i class="fas fa-comment"></i></th>
                                     <th class="text-center">ERpost</th>
                                     <th class="text-center">ERview</th>
-                                    <th class="text-center">VRpost (%)</th>
+                                    <th class="text-center">VRpost</th>
                                     <th class="text-center">Тип</th>
                                     <th class="text-center">Детали</th>
                                 </tr>
