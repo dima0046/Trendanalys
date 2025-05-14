@@ -286,14 +286,14 @@
                         {% endfor %}
                     </div>
                     {% endif %}
-                    {% if parsed_data and unique_categories %}
+                    {% if parsed_data %}
                     <h6>Фильтры категорий</h6>
                     <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" value="all" id="category-filter-all" name="category_filter" {% if 'all' in category_filters or not category_filters %}checked{% endif %}>
                             <label class="form-check-label" for="category-filter-all">Все</label>
                         </div>
-                        {% for category in unique_categories %}
+                        {% for category in unique_categories_in_data %}
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="{{ category }}" id="category-filter-{{ forloop.counter }}" name="category_filter" {% if category in category_filters %}checked{% endif %}>
                                 <label class="form-check-label" for="category-filter-{{ forloop.counter }}">{{ category }}</label>

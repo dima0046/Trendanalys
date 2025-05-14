@@ -250,6 +250,7 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
 def index(request):
     return render(request, 'myapp/base.html')
 
+# Внутри telegram_view
 async def telegram_view(request):
     cleanup_temp_data()
 
@@ -271,9 +272,11 @@ async def telegram_view(request):
             all_data = []
             data_id_list = []
 
+            # Process each channel URL asynchronously
             for channel_url in channel_urls:
                 channel_url = channel_url.strip()
                 if channel_url:
+                    # Use await to call the async function
                     data, data_id = await fetch_telegram_data(channel_url, start_date, end_date)
                     all_data.extend(data)
                     data_id_list.append(data_id)
@@ -292,7 +295,7 @@ async def telegram_view(request):
                    (not category_filters or 'all' in category_filters or item['category'] in category_filters)
             ]
             
-            # Сортировка данных
+            # Sort data
             reverse = sort_direction == 'desc'
             if sort_by == 'channel':
                 filtered_data.sort(key=lambda x: x['title'], reverse=reverse)
@@ -302,6 +305,9 @@ async def telegram_view(request):
                 filtered_data.sort(key=lambda x: x['date'], reverse=reverse)
             elif sort_by == 'category':
                 filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
+
+            # Extract unique categories from filtered_data
+            unique_categories_in_data = sorted(list(set(item['category'] for item in filtered_data if item['category'])))
 
             paginator = Paginator(filtered_data, 20)
             page_number = request.GET.get('page')
@@ -318,7 +324,8 @@ async def telegram_view(request):
                 'end_date': request.POST.get('end_date'),
                 'sort_by': sort_by,
                 'sort_direction': sort_direction,
-                'unique_categories': get_unique_categories(),
+                'unique_categories': get_unique_categories(),  # For dropdown in table
+                'unique_categories_in_data': unique_categories_in_data,  # For filters
             })
     else:
         form = TelegramForm(initial={
@@ -345,7 +352,7 @@ async def telegram_view(request):
            (not category_filters or 'all' in category_filters or item['category'] in category_filters)
     ]
     
-    # Сортировка данных
+    # Sort data
     reverse = sort_direction == 'desc'
     if sort_by == 'channel':
         filtered_data.sort(key=lambda x: x['title'], reverse=reverse)
@@ -355,6 +362,9 @@ async def telegram_view(request):
         filtered_data.sort(key=lambda x: x['date'], reverse=reverse)
     elif sort_by == 'category':
         filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
+
+    # Extract unique categories from filtered_data
+    unique_categories_in_data = sorted(list(set(item['category'] for item in filtered_data if item['category'])))
 
     paginator = Paginator(filtered_data, 20)
     page_number = request.GET.get('page')
@@ -373,6 +383,7 @@ async def telegram_view(request):
         'sort_by': sort_by,
         'sort_direction': sort_direction,
         'unique_categories': get_unique_categories(),
+        'unique_categories_in_data': unique_categories_in_data,
     })
 
 def export_to_excel(request):
