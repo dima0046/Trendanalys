@@ -1,28 +1,29 @@
+/* Логика для сайдбара и hamburger-меню */
 jQuery(document).ready(function ($) {
-  var trigger = $('.hamburger'),
-      overlay = $('.overlay'),
-      isClosed = false;
+    const trigger = $('.hamburger');
+    const overlay = $('.overlay');
+    let isClosed = false;
 
-  trigger.click(function () {
-      hamburger_cross();
-  });
+    // Обработчик клика по hamburger-меню
+    trigger.click(function () {
+        hamburgerCross();
+    });
 
-  function hamburger_cross() {
+    // Функция для переключения состояния hamburger-меню
+    function hamburgerCross() {
+        if (isClosed) {
+            overlay.hide();
+            trigger.removeClass('is-open').addClass('is-closed');
+            isClosed = false;
+        } else {
+            overlay.show();
+            trigger.removeClass('is-closed').addClass('is-open');
+            isClosed = true;
+        }
+    }
 
-      if (isClosed == true) {
-          overlay.hide();
-          trigger.removeClass('is-open');
-          trigger.addClass('is-closed');
-          isClosed = false;
-      } else {
-          overlay.show();
-          trigger.removeClass('is-closed');
-          trigger.addClass('is-open');
-          isClosed = true;
-      }
-  }
-
-  $('[data-toggle="offcanvas"]').click(function () {
-      $('#wrapper').toggleClass('toggled');
-  });
+    // Переключение класса toggled для wrapper
+    $('[data-toggle="offcanvas"]').click(function () {
+        $('#wrapper').toggleClass('toggled');
+    });
 });

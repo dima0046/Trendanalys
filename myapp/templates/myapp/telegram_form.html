@@ -4,6 +4,7 @@
 {% block title %}Введите данные для экспорта статистики Telegram{% endblock %}
 
 {% block content %}
+<<<<<<< HEAD
 <!-- Подключаем Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 <!-- Подключаем Font Awesome для иконок -->
@@ -223,6 +224,8 @@
     
 </style>
 
+=======
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
 <div class="full-width-container">
     <div class="filters-container">
         <div class="card mb-3">
@@ -341,13 +344,19 @@
                                     <th class="text-center"><i class="fas fa-comment"></i></th>
                                     <th class="text-center">ERpost</th>
                                     <th class="text-center">ERview</th>
+<<<<<<< HEAD
                                     <th class="text-center">VRpost</th>
                                     <th class="text-center">Тип</th>
                                     <th class="text-center">Детали</th>
+=======
+                                    <th class="text-center">VRpost (%)</th>
+                                    <th class="text-center">Тип</th>
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in parsed_data %}
+<<<<<<< HEAD
                                     <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}" data-er-post="{{ item.er_post }}" data-er-view="{{ item.er_view }}" data-vr-post="{{ item.vr_post }}">
                                         <td>
                                             <img class="channel-avatar" src="{% if item.avatar %}/static/{{ item.avatar }}{% else %}{% static 'myapp/images/default_avatar.jpg' %}{% endif %}" alt="{{ item.title }} avatar">
@@ -385,6 +394,44 @@
                                             </button>
                                         </td>
                                     </tr>
+=======
+                                    {% if not filters or 'all' in filters or item.title in filters %}
+                                        {% if not category_filters or 'all' in category_filters or item.category in category_filters %}
+                                            <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}" data-er-post="{{ item.er_post }}" data-er-view="{{ item.er_view }}" data-vr-post="{{ item.vr_post }}">
+                                                <td>
+                                                    <img class="channel-avatar" src="{% if item.avatar %}/static/{{ item.avatar }}{% else %}{% static 'myapp/images/default_avatar.jpg' %}{% endif %}" alt="{{ item.title }} avatar">
+                                                </td>
+                                                <td>
+                                                    <div class="post-meta">
+                                                        <a href="{{ item.link }}">{{ item.title }}</a> (подписчиков: {{ item.subscribers }})
+                                                        пост <a href="{{ item.link }}">{{ item.post_id }}</a> 
+                                                        от {{ item.date }}
+                                                    </div>
+                                                    <span class="post-text-short">{{ item.message|slice:":100" }}{% if item.message|length > 100 %}...{% endif %}</span>
+                                                    <span class="post-text-full">{{ item.message }}</span>
+                                                    {% if item.message|length > 100 %}
+                                                        <a href="#" class="read-more" data-expanded="false">читать далее</a>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <select class="category-select form-control" data-post-id="{{ item.post_id }}" data-data-id="{{ data_id }}">
+                                                        {% for category in unique_categories %}
+                                                            <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td class="text-center">{{ item.views }}</td>
+                                                <td class="text-center">{{ item.forwards }}</td>
+                                                <td class="text-center">{{ item.reactions }}</td>
+                                                <td class="text-center">{{ item.comments_count }}</td>
+                                                <td class="text-center">{{ item.er_post }}</td>
+                                                <td class="text-center">{{ item.er_view }}</td>
+                                                <td class="text-center">{{ item.vr_post }}</td>
+                                                <td class="text-center">{{ item.type }}</td>
+                                            </tr>
+                                        {% endif %}
+                                    {% endif %}
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -405,7 +452,7 @@
                             {% endif %}
                             {% for num in parsed_data.paginator.page_range %}
                                 {% if parsed_data.number == num %}
-                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    <li class="pageLik-item active"><span class="page-link">{{ num }}</span></li>
                                 {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
                                     <li class="page-item">
                                         <a class="page-link pagination-link" href="?page={{ num }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}{% for filter in filters %}&filter={{ filter }}{% endfor %}{% for category_filter in category_filters %}&category_filter={{ category_filter }}{% endfor %}">{{ num }}</a>
@@ -436,6 +483,7 @@
             </div>
         </div>
     </div>
+<<<<<<< HEAD
 
     <!-- Bootstrap 5 Modal -->
 <!-- Bootstrap 5 Modal -->
@@ -449,6 +497,16 @@
             <div class="modal-body">
                 <h5>Текст поста:</h5>
                 <p id="detail-post-text" class="mb-3"></p>
+=======
+    <div id="post-details" class="post-details">
+            <h5 class="card-header">
+                Комментарии
+                <span class="volume-toggle-container">
+                    <i id="volume-toggle" class="fas fa-volume-mute" style="cursor: pointer;"></i>
+                </span>
+            </h5>
+            <div class="card-body">
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
                 <h5>Метрики:</h5>
                 <ul class="list-group mb-3">
                     <li class="list-group-item">
@@ -485,14 +543,18 @@
                     </ul>
                 </nav>
             </div>
+<<<<<<< HEAD
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
             </div>
         </div>
+=======
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
     </div>
 
 
 </div>
+<<<<<<< HEAD
 
 <!-- Подключаем Bootstrap 5 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -940,4 +1002,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+=======
+>>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
 {% endblock %}
