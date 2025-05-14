@@ -4,7 +4,6 @@
 {% block title %}Введите данные для экспорта статистики Telegram{% endblock %}
 
 {% block content %}
-<<<<<<< HEAD
 <!-- Подключаем Bootstrap 5 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 <!-- Подключаем Font Awesome для иконок -->
@@ -12,14 +11,14 @@
 
 <style>
     /* Основной контейнер */
-.full-width-container {
-    max-width: 1920px; /* Максимальная ширина Full HD */
-    width: 100%; /* Занимает всю доступную ширину экрана */
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    position: relative;
-}
+    .full-width-container {
+        max-width: 1920px; /* Максимальная ширина Full HD */
+        width: 100%; /* Занимает всю доступную ширину экрана */
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        position: relative;
+    }
 
     /* Контейнер фильтров */
     .filters-container {
@@ -28,13 +27,13 @@
     }
 
     /* Контейнер таблицы */
-#table-container {
-    flex: 1; /* Занимает всё доступное пространство */
-    min-width: 0; /* Предотвращает проблемы с flex */
-    transition: width 0.3s ease;
-    position: relative;
-    overflow-x: auto; /* Добавляем горизонтальную прокрутку */
-}
+    #table-container {
+        flex: 1; /* Занимает всё доступное пространство */
+        min-width: 0; /* Предотвращает проблемы с flex */
+        transition: width 0.3s ease;
+        position: relative;
+        overflow-x: auto; /* Добавляем горизонтальную прокрутку */
+    }
 
     /* Таблица */
     .post-table {
@@ -43,35 +42,35 @@
         min-width: 900px;
     }
     .post-table th:nth-child(1), .post-table td:nth-child(1) {
-    width: 50px; /* Канал */
-    text-align: center;
-    flex-shrink: 0; /* Фиксируем ширину */
-}
-.post-table th:nth-child(2), .post-table td:nth-child(2) {
-    width: 50%; /* Пост занимает половину доступной ширины */
-    min-width: 200px; /* Минимальная ширина для читаемости */
-}
-.post-table th:nth-child(3), .post-table td:nth-child(3) {
-    width: 110px; /* Категория */
-    text-align: center;
-    flex-shrink: 0;
-}
-.post-table th:nth-child(4), .post-table td:nth-child(4),
-.post-table th:nth-child(5), .post-table td:nth-child(5),
-.post-table th:nth-child(6), .post-table td:nth-child(6),
-.post-table th:nth-child(7), .post-table td:nth-child(7),
-.post-table th:nth-child(8), .post-table td:nth-child(8),
-.post-table th:nth-child(9), .post-table td:nth-child(9),
-.post-table th:nth-child(10), .post-table td:nth-child(10) {
-    width: 80px; /* Метрики */
-    text-align: center;
-    flex-shrink: 0;
-}
-.post-table th:nth-child(11), .post-table td:nth-child(11) {
-    width: 50px; /* Детали */
-    text-align: center;
-    flex-shrink: 0;
-}
+        width: 50px; /* Канал */
+        text-align: center;
+        flex-shrink: 0; /* Фиксируем ширину */
+    }
+    .post-table th:nth-child(2), .post-table td:nth-child(2) {
+        width: 50%; /* Пост занимает половину доступной ширины */
+        min-width: 200px; /* Минимальная ширина для читаемости */
+    }
+    .post-table th:nth-child(3), .post-table td:nth-child(3) {
+        width: 110px; /* Категория */
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .post-table th:nth-child(4), .post-table td:nth-child(4),
+    .post-table th:nth-child(5), .post-table td:nth-child(5),
+    .post-table th:nth-child(6), .post-table td:nth-child(6),
+    .post-table th:nth-child(7), .post-table td:nth-child(7),
+    .post-table th:nth-child(8), .post-table td:nth-child(8),
+    .post-table th:nth-child(9), .post-table td:nth-child(9),
+    .post-table th:nth-child(10), .post-table td:nth-child(10) {
+        width: 80px; /* Метрики */
+        text-align: center;
+        flex-shrink: 0;
+    }
+    .post-table th:nth-child(11), .post-table td:nth-child(11) {
+        width: 50px; /* Детали */
+        text-align: center;
+        flex-shrink: 0;
+    }
 
     tr.modified {
         background-color: #fff3cd;
@@ -123,6 +122,19 @@
         border-radius: 50%;
         width: 360px;
         height: 360px;
+    }
+
+    /* Стили для спиннера */
+    .spinner-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+    }
+
+    #media-container {
+        min-height: 300px; /* Убедимся, что контейнер достаточно большой для спиннера */
     }
 
     /* Стили для тумблера */
@@ -191,41 +203,38 @@
 
     /* Адаптивность для мобильных устройств (меньше 768px).*/
     @media (max-width: 768px) {
-    .full-width-container {
-        width: 100%;
+        .full-width-container {
+            width: 100%;
+        }
+        .filters-container {
+            width: 100%;
+        }
+        #table-container {
+            width: 100%;
+        }
+        /* Таблица для мобильных */
+        .post-table th:nth-child(1), .post-table td:nth-child(1) {
+            width: 40px;
+        }
+        .post-table th:nth-child(2), .post-table td:nth-child(2) {
+            width: 50%; /* На мобильных занимает 50% */
+            min-width: 150px;
+        }
+        .post-table th:nth-child(3), .post-table td:nth-child(3) {
+            width: 40px;
+        }
+        .post-table th:nth-child(4), .post-table td:nth-child(4),
+        .post-table th:nth-child(5), .post-table td:nth-child(5),
+        .post-table th:nth-child(6), .post-table td:nth-child(6),
+        .post-table th:nth-child(7), .post-table td:nth-child(7),
+        .post-table th:nth-child(8), .post-table td:nth-child(8),
+        .post-table th:nth-child(9), .post-table td:nth-child(9),
+        .post-table th:nth-child(10), .post-table td:nth-child(10) {
+            width: 50px;
+        }
     }
-    .filters-container {
-        width: 100%;
-    }
-    #table-container {
-        width: 100%;
-    }
-    /* Таблица для мобильных */
-    .post-table th:nth-child(1), .post-table td:nth-child(1) {
-        width: 40px;
-    }
-    .post-table th:nth-child(2), .post-table td:nth-child(2) {
-        width: 50%; /* На мобильных занимает 50% */
-        min-width: 150px;
-    }
-    .post-table th:nth-child(3), .post-table td:nth-child(3) {
-        width: 40px;
-    }
-    .post-table th:nth-child(4), .post-table td:nth-child(4),
-    .post-table th:nth-child(5), .post-table td:nth-child(5),
-    .post-table th:nth-child(6), .post-table td:nth-child(6),
-    .post-table th:nth-child(7), .post-table td:nth-child(7),
-    .post-table th:nth-child(8), .post-table td:nth-child(8),
-    .post-table th:nth-child(9), .post-table td:nth-child(9),
-    .post-table th:nth-child(10), .post-table td:nth-child(10) {
-        width: 50px;
-    }
-}
-    
 </style>
 
-=======
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
 <div class="full-width-container">
     <div class="filters-container">
         <div class="card mb-3">
@@ -344,57 +353,13 @@
                                     <th class="text-center"><i class="fas fa-comment"></i></th>
                                     <th class="text-center">ERpost</th>
                                     <th class="text-center">ERview</th>
-<<<<<<< HEAD
                                     <th class="text-center">VRpost</th>
                                     <th class="text-center">Тип</th>
                                     <th class="text-center">Детали</th>
-=======
-                                    <th class="text-center">VRpost (%)</th>
-                                    <th class="text-center">Тип</th>
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in parsed_data %}
-<<<<<<< HEAD
-                                    <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}" data-er-post="{{ item.er_post }}" data-er-view="{{ item.er_view }}" data-vr-post="{{ item.vr_post }}">
-                                        <td>
-                                            <img class="channel-avatar" src="{% if item.avatar %}/static/{{ item.avatar }}{% else %}{% static 'myapp/images/default_avatar.jpg' %}{% endif %}" alt="{{ item.title }} avatar">
-                                        </td>
-                                        <td>
-                                            <div class="post-meta">
-                                                <a href="{{ item.link }}">{{ item.title }}</a> (подписчиков: {{ item.subscribers }})
-                                                пост <a href="{{ item.link }}">{{ item.post_id }}</a> 
-                                                от {{ item.date }}
-                                            </div>
-                                            <span class="post-text-short">{{ item.message|slice:":100" }}{% if item.message|length > 100 %}...{% endif %}</span>
-                                            <span class="post-text-full">{{ item.message }}</span>
-                                            {% if item.message|length > 100 %}
-                                                <a href="#" class="read-more" data-expanded="false">читать далее</a>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <select class="category-select form-control" data-post-id="{{ item.post_id }}" data-data-id="{{ data_id }}">
-                                                {% for category in unique_categories %}
-                                                    <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </td>
-                                        <td class="text-center">{{ item.views }}</td>
-                                        <td class="text-center">{{ item.forwards }}</td>
-                                        <td class="text-center">{{ item.reactions }}</td>
-                                        <td class="text-center">{{ item.comments_count }}</td>
-                                        <td class="text-center">{{ item.er_post }}</td>
-                                        <td class="text-center">{{ item.er_view }}</td>
-                                        <td class="text-center">{{ item.vr_post }}</td>
-                                        <td class="text-center">{{ item.type }}</td>
-                                        <td class="text-center">
-                                            <button class="details-btn" data-bs-toggle="modal" data-bs-target="#postDetailsModal" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}">
-                                                <i class="fas fa-info-circle"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-=======
                                     {% if not filters or 'all' in filters or item.title in filters %}
                                         {% if not category_filters or 'all' in category_filters or item.category in category_filters %}
                                             <tr class="post-row" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}" data-views="{{ item.views }}" data-forwards="{{ item.forwards }}" data-reactions="{{ item.reactions }}" data-comments="{{ item.comments_count }}" data-original-category="{{ item.category }}" data-er-post="{{ item.er_post }}" data-er-view="{{ item.er_view }}" data-vr-post="{{ item.vr_post }}">
@@ -428,10 +393,14 @@
                                                 <td class="text-center">{{ item.er_view }}</td>
                                                 <td class="text-center">{{ item.vr_post }}</td>
                                                 <td class="text-center">{{ item.type }}</td>
+                                                <td class="text-center">
+                                                    <button class="details-btn" data-bs-toggle="modal" data-bs-target="#postDetailsModal" data-post-id="{{ item.post_id }}" data-channel-id="{{ item.id }}">
+                                                        <i class="fas fa-info-circle"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         {% endif %}
                                     {% endif %}
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -452,7 +421,7 @@
                             {% endif %}
                             {% for num in parsed_data.paginator.page_range %}
                                 {% if parsed_data.number == num %}
-                                    <li class="pageLik-item active"><span class="page-link">{{ num }}</span></li>
+                                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                                 {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
                                     <li class="page-item">
                                         <a class="page-link pagination-link" href="?page={{ num }}&data_id={{ data_id }}&channel_url={{ channel_url }}&start_date={{ start_date }}&end_date={{ end_date }}{% for filter in filters %}&filter={{ filter }}{% endfor %}{% for category_filter in category_filters %}&category_filter={{ category_filter }}{% endfor %}">{{ num }}</a>
@@ -483,78 +452,69 @@
             </div>
         </div>
     </div>
-<<<<<<< HEAD
 
     <!-- Bootstrap 5 Modal -->
-<!-- Bootstrap 5 Modal -->
-<div class="modal fade" id="postDetailsModal" tabindex="-1" aria-labelledby="postDetailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="postDetailsModalLabel">Детали поста</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <h5>Текст поста:</h5>
-                <p id="detail-post-text" class="mb-3"></p>
-=======
-    <div id="post-details" class="post-details">
-            <h5 class="card-header">
-                Комментарии
-                <span class="volume-toggle-container">
-                    <i id="volume-toggle" class="fas fa-volume-mute" style="cursor: pointer;"></i>
-                </span>
-            </h5>
-            <div class="card-body">
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
-                <h5>Метрики:</h5>
-                <ul class="list-group mb-3">
-                    <li class="list-group-item">
-                        <i class="far fa-eye"></i> Просмотры: <span id="detail-views"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-share"></i> Репосты: <span id="detail-forwards"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-poo"></i> Реакции: <span id="detail-reactions"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-comment"></i> Комментарии: <span id="detail-comments"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-chart-line"></i> ERpost: <span id="detail-er-post"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-chart-bar"></i> ERview: <span id="detail-er-view"></span>
-                    </li>
-                    <li class="list-group-item">
-                        <i class="fas fa-eye"></i> VRpost (%): <span id="detail-vr-post"></span>
-                    </li>
-                </ul>
-                <h5>Реакции:</h5>
-                <ul id="reactions-list" class="list-group"></ul>
-                <div id="reactions-toggle" style="display: none;">
-                    <a href="#" class="toggle-reactions">развернуть</a>
+    <div class="modal fade" id="postDetailsModal" tabindex="-1" aria-labelledby="postDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="postDetailsModalLabel">Детали поста</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <h5 class="mt-3">Комментарии:</h5>
-                <ul id="comments-list" class="list-group"></ul>
-                <nav aria-label="Comments navigation" id="comments-pagination" class="mt-3">
-                    <ul class="pagination pagination-sm">
+                <div class="modal-body">
+                    <h5>Медиа:</h5>
+                    <div id="media-container" class="mb-3 position-relative">
+                        <div id="loading-spinner" class="spinner-container" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <h5>Текст поста:</h5>
+                    <p id="detail-post-text" class="mb-3"></p>
+                    <h5>Метрики:</h5>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item">
+                            <i class="far fa-eye"></i> Просмотры: <span id="detail-views"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-share"></i> Репосты: <span id="detail-forwards"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-poo"></i> Реакции: <span id="detail-reactions"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-comment"></i> Комментарии: <span id="detail-comments"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-chart-line"></i> ERpost: <span id="detail-er-post"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-chart-bar"></i> ERview: <span id="detail-er-view"></span>
+                        </li>
+                        <li class="list-group-item">
+                            <i class="fas fa-eye"></i> VRpost: <span id="detail-vr-post"></span>
+                        </li>
                     </ul>
-                </nav>
-            </div>
-<<<<<<< HEAD
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <h5>Реакции:</h5>
+                    <ul id="reactions-list" class="list-group"></ul>
+                    <div id="reactions-toggle" style="display: none;">
+                        <a href="#" class="toggle-reactions">развернуть</a>
+                    </div>
+                    <h5 class="mt-3">Комментарии:</h5>
+                    <ul id="comments-list" class="list-group"></ul>
+                    <nav aria-label="Comments navigation" id="comments-pagination" class="mt-3">
+                        <ul class="pagination pagination-sm">
+                        </ul>
+                    </nav>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
             </div>
         </div>
-=======
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
     </div>
-
-
 </div>
-<<<<<<< HEAD
 
 <!-- Подключаем Bootstrap 5 JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -616,177 +576,225 @@ document.addEventListener('DOMContentLoaded', function() {
     checkForChanges();
 
     async function loadPostDetails(postId, channelId, page = 1) {
-    currentPostId = postId;
-    currentChannelId = channelId;
-    currentPage = page;
+        currentPostId = postId;
+        currentChannelId = channelId;
+        currentPage = page;
 
-    try {
-        const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
-        }
-        const data = await response.json();
+        // Показываем спиннер
+        const spinner = document.getElementById('loading-spinner');
+        spinner.style.display = 'block';
 
-        const row = Array.from(postRows).find(row => row.getAttribute('data-post-id') === postId);
-        // Add the full post text
-        document.getElementById('detail-post-text').textContent = row.querySelector('td:nth-child(2)').textContent.trim() || 'Текст поста отсутствует';
-        detailViews.textContent = row.getAttribute('data-views') || 'N/A';
-        detailForwards.textContent = row.getAttribute('data-forwards') || 'N/A';
-        detailReactions.textContent = row.getAttribute('data-reactions') || '0';
-        detailComments.textContent = row.getAttribute('data-comments') || '0';
-        detailErPost.textContent = row.getAttribute('data-er-post') || '0';
-        detailErView.textContent = row.getAttribute('data-er-view') || '0';
-        detailVrPost.textContent = row.getAttribute('data-vr-post') || '0';
+        try {
+            const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+            }
+            const data = await response.json();
+            console.log('Post details data:', data);
 
-        reactionsList.innerHTML = '';
-        reactionsToggle.innerHTML = '';
-        commentsList.innerHTML = '';
-        const paginationUl = commentsPagination.querySelector('ul');
-        paginationUl.innerHTML = '';
+            const row = Array.from(postRows).find(row => row.getAttribute('data-post-id') === postId);
+            // Render media
+            const mediaContainer = document.getElementById('media-container');
+            mediaContainer.innerHTML = '';
+            if (data.media) {
+                console.log('Media data:', data.media);
+                if (data.media.type === 'photo') {
+                    if (data.media.url) {
+                        const img = document.createElement('img');
+                        img.src = data.media.url;
+                        img.alt = data.media.description;
+                        img.onerror = () => {
+                            console.error('Failed to load image:', data.media.url);
+                            mediaContainer.textContent = 'Не удалось загрузить изображение';
+                        };
+                        img.onload = () => console.log('Image loaded successfully:', data.media.url);
+                        mediaContainer.appendChild(img);
+                    } else {
+                        mediaContainer.textContent = data.media.description;
+                    }
+                } else if (data.media.type === 'video') {
+                    if (data.media.url) {
+                        const video = document.createElement('video');
+                        video.src = data.media.url;
+                        video.controls = true;
+                        video.onerror = () => {
+                            console.error('Failed to load video:', data.media.url);
+                            mediaContainer.textContent = 'Не удалось загрузить видео';
+                        };
+                        video.onloadeddata = () => console.log('Video loaded successfully:', data.media.url);
+                        mediaContainer.appendChild(video);
+                    } else {
+                        mediaContainer.textContent = data.media.description;
+                    }
+                } else {
+                    mediaContainer.textContent = data.media.description;
+                }
+            } else {
+                mediaContainer.textContent = 'Нет медиа';
+            }
 
-        if (data.reactions && data.reactions.length > 0) {
-            const visibleReactions = data.reactions.slice(0, 3);
-            const hiddenReactions = data.reactions.slice(3);
+            // Render post text
+            document.getElementById('detail-post-text').textContent = row.querySelector('td:nth-child(2)').textContent.trim() || 'Текст поста отсутствует';
+            detailViews.textContent = row.getAttribute('data-views') || 'N/A';
+            detailForwards.textContent = row.getAttribute('data-forwards') || 'N/A';
+            detailReactions.textContent = row.getAttribute('data-reactions') || '0';
+            detailComments.textContent = row.getAttribute('data-comments') || '0';
+            detailErPost.textContent = row.getAttribute('data-er-post') || '0';
+            detailErView.textContent = row.getAttribute('data-er-view') || '0';
+            detailVrPost.textContent = row.getAttribute('data-vr-post') || '0';
 
-            visibleReactions.forEach(reaction => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item reaction-item';
-                const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
-                li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
-                reactionsList.appendChild(li);
-            });
+            reactionsList.innerHTML = '';
+            reactionsToggle.innerHTML = '';
+            commentsList.innerHTML = '';
+            const paginationUl = commentsPagination.querySelector('ul');
+            paginationUl.innerHTML = '';
 
-            if (hiddenReactions.length > 0) {
-                const hiddenContainer = document.createElement('div');
-                hiddenContainer.className = 'hidden-reactions';
-                hiddenContainer.style.display = 'none';
-                hiddenReactions.forEach(reaction => {
+            if (data.reactions && data.reactions.length > 0) {
+                const visibleReactions = data.reactions.slice(0, 3);
+                const hiddenReactions = data.reactions.slice(3);
+
+                visibleReactions.forEach(reaction => {
                     const li = document.createElement('li');
                     li.className = 'list-group-item reaction-item';
                     const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
                     li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
-                    hiddenContainer.appendChild(li);
+                    reactionsList.appendChild(li);
                 });
-                reactionsList.appendChild(hiddenContainer);
 
-                const toggleLink = document.createElement('a');
-                toggleLink.href = '#';
-                toggleLink.className = 'toggle-reactions';
-                toggleLink.textContent = 'развернуть';
-                reactionsToggle.appendChild(toggleLink);
+                if (hiddenReactions.length > 0) {
+                    const hiddenContainer = document.createElement('div');
+                    hiddenContainer.className = 'hidden-reactions';
+                    hiddenContainer.style.display = 'none';
+                    hiddenReactions.forEach(reaction => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item reaction-item';
+                        const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
+                        li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                        hiddenContainer.appendChild(li);
+                    });
+                    reactionsList.appendChild(hiddenContainer);
 
-                reactionsToggle.style.display = 'block';
-                toggleLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    if (hiddenContainer.style.display === 'none') {
-                        hiddenContainer.style.display = 'block';
-                        this.textContent = 'свернуть';
-                    } else {
-                        hiddenContainer.style.display = 'none';
-                        this.textContent = 'развернуть';
-                    }
-                });
-            } else {
-                reactionsToggle.style.display = 'none';
-            }
-        } else {
-            reactionsList.innerHTML = '<li class="list-group-item">Нет реакций</li>';
-            reactionsToggle.style.display = 'none';
-        }
-
-        if (data.total_comments > 0 && data.comments && data.comments.length > 0) {
-            data.comments.forEach(comment => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item';
-
-                const message = comment.message || '[Без текста]';
-                const isLongMessage = message.length > 100;
-                const shortMessage = isLongMessage ? message.slice(0, 100) + '...' : message;
-                const fullMessage = message;
-
-                const messageContainer = document.createElement('div');
-                messageContainer.className = 'comment-message';
-
-                const shortText = document.createElement('p');
-                shortText.className = 'mb-1 short-comment';
-                shortText.textContent = shortMessage;
-                messageContainer.appendChild(shortText);
-
-                const fullText = document.createElement('p');
-                fullText.className = 'mb-1 full-comment';
-                fullText.textContent = fullMessage;
-                fullText.style.display = 'none';
-                messageContainer.appendChild(fullText);
-
-                if (isLongMessage) {
                     const toggleLink = document.createElement('a');
                     toggleLink.href = '#';
-                    toggleLink.className = 'toggle-comment';
-                    toggleLink.textContent = 'читать далее';
-                    messageContainer.appendChild(toggleLink);
+                    toggleLink.className = 'toggle-reactions';
+                    toggleLink.textContent = 'развернуть';
+                    reactionsToggle.appendChild(toggleLink);
 
+                    reactionsToggle.style.display = 'block';
                     toggleLink.addEventListener('click', function(e) {
                         e.preventDefault();
-                        if (shortText.style.display === 'none') {
-                            shortText.style.display = 'block';
-                            fullText.style.display = 'none';
-                            this.textContent = 'читать далее';
-                        } else {
-                            shortText.style.display = 'none';
-                            fullText.style.display = 'block';
+                        if (hiddenContainer.style.display === 'none') {
+                            hiddenContainer.style.display = 'block';
                             this.textContent = 'свернуть';
+                        } else {
+                            hiddenContainer.style.display = 'none';
+                            this.textContent = 'развернуть';
                         }
                     });
+                } else {
+                    reactionsToggle.style.display = 'none';
                 }
+            } else {
+                reactionsList.innerHTML = '<li class="list-group-item">Нет реакций</li>';
+                reactionsToggle.style.display = 'none';
+            }
 
-                li.appendChild(messageContainer);
+            if (data.total_comments > 0 && data.comments && data.comments.length > 0) {
+                data.comments.forEach(comment => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
 
-                const meta = document.createElement('small');
-                meta.className = 'text-muted';
-                meta.innerHTML = `
-                    Автор: ${comment.author || 'Аноним'} | 
-                    Дата: ${comment.date} | 
-                    Репостов: ${comment.forwards} | 
-                    Ответов: ${comment.replies}
-                `;
-                li.appendChild(meta);
+                    const message = comment.message || '[Без текста]';
+                    const isLongMessage = message.length > 100;
+                    const shortMessage = isLongMessage ? message.slice(0, 100) + '...' : message;
+                    const fullMessage = message;
 
-                commentsList.appendChild(li);
-            });
-        } else {
-            commentsList.innerHTML = '<li class="list-group-item">Комментарии отсутствуют или запрещены в этом канале</li>';
+                    const messageContainer = document.createElement('div');
+                    messageContainer.className = 'comment-message';
+
+                    const shortText = document.createElement('p');
+                    shortText.className = 'mb-1 short-comment';
+                    shortText.textContent = shortMessage;
+                    messageContainer.appendChild(shortText);
+
+                    const fullText = document.createElement('p');
+                    fullText.className = 'mb-1 full-comment';
+                    fullText.textContent = fullMessage;
+                    fullText.style.display = 'none';
+                    messageContainer.appendChild(fullText);
+
+                    if (isLongMessage) {
+                        const toggleLink = document.createElement('a');
+                        toggleLink.href = '#';
+                        toggleLink.className = 'toggle-comment';
+                        toggleLink.textContent = 'читать далее';
+                        messageContainer.appendChild(toggleLink);
+
+                        toggleLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            if (shortText.style.display === 'none') {
+                                shortText.style.display = 'block';
+                                fullText.style.display = 'none';
+                                this.textContent = 'читать далее';
+                            } else {
+                                shortText.style.display = 'none';
+                                fullText.style.display = 'block';
+                                this.textContent = 'свернуть';
+                            }
+                        });
+                    }
+
+                    li.appendChild(messageContainer);
+
+                    const meta = document.createElement('small');
+                    meta.className = 'text-muted';
+                    meta.innerHTML = `
+                        Автор: ${comment.author || 'Аноним'} | 
+                        Дата: ${comment.date} | 
+                        Репостов: ${comment.forwards} | 
+                        Ответов: ${comment.replies}
+                    `;
+                    li.appendChild(meta);
+
+                    commentsList.appendChild(li);
+                });
+            } else {
+                commentsList.innerHTML = '<li class="list-group-item">Комментарии отсутствуют или запрещены в этом канале</li>';
+            }
+
+            const totalComments = data.total_comments || 0;
+            const totalPages = Math.ceil(totalComments / commentsPerPage);
+            if (totalPages > 1) {
+                if (page > 1) {
+                    const prevLi = document.createElement('li');
+                    prevLi.className = 'page-item';
+                    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${page - 1}">«</a>`;
+                    paginationUl.appendChild(prevLi);
+                }
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === page ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    paginationUl.appendChild(li);
+                }
+                if (page < totalPages) {
+                    const nextLi = document.createElement('li');
+                    nextLi.className = 'page-item';
+                    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${page + 1}">»</a>`;
+                    paginationUl.appendChild(nextLi);
+                }
+            }
+
+            highlightActivePost(postId);
+        } catch (error) {
+            console.error('Error loading post details:', error);
+            commentsList.innerHTML = `<li class="list-group-item">Ошибка загрузки комментариев: ${error.message}</li>`;
+        } finally {
+            // Скрываем спиннер после завершения (успешного или с ошибкой)
+            spinner.style.display = 'none';
         }
-
-        const totalComments = data.total_comments || 0;
-        const totalPages = Math.ceil(totalComments / commentsPerPage);
-        if (totalPages > 1) {
-            if (page > 1) {
-                const prevLi = document.createElement('li');
-                prevLi.className = 'page-item';
-                prevLi.innerHTML = `<a class="page-link" href="#" data-page="${page - 1}">«</a>`;
-                paginationUl.appendChild(prevLi);
-            }
-            for (let i = 1; i <= totalPages; i++) {
-                const li = document.createElement('li');
-                li.className = `page-item ${i === page ? 'active' : ''}`;
-                li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
-                paginationUl.appendChild(li);
-            }
-            if (page < totalPages) {
-                const nextLi = document.createElement('li');
-                nextLi.className = 'page-item';
-                nextLi.innerHTML = `<a class="page-link" href="#" data-page="${page + 1}">»</a>`;
-                paginationUl.appendChild(nextLi);
-            }
-        }
-
-        highlightActivePost(postId);
-    } catch (error) {
-        console.error('Error loading post details:', error);
-        commentsList.innerHTML = `<li class="list-group-item">Ошибка загрузки комментариев: ${error.message}</li>`;
     }
-}
 
     function highlightActivePost(postId) {
         postRows.forEach(row => {
@@ -1002,6 +1010,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-=======
->>>>>>> a32569eb6ae133175ceab594d0d54fe0f965efbc
 {% endblock %}
