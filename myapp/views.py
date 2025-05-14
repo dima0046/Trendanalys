@@ -43,6 +43,8 @@ from machine_learning.train_model import load_model, predict_category, update_mo
 # Image processing
 from PIL import Image
 import io
+from collections import defaultdict
+from statistics import mean
 
 load_dotenv()
 api_id = os.getenv("API_ID")  
@@ -399,11 +401,17 @@ def export_to_excel(request):
         return HttpResponse("Data file not found.", status=404)
 
     workbook = openpyxl.Workbook()
-    sheet = workbook.active
-    sheet.title = 'Telegram Data'
     
+    # Get date range for filename
+    dates = [datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S') for item in parsed_data]
+    min_date = min(dates).strftime('%Y%m%d')
+    max_date = max(dates).strftime('%Y%m%d')
+
+    # Sheet 1: Original Data
+    sheet1 = workbook.active
+    sheet1.title = 'Original Data'
     headers = ['Канал', 'ID Канала', 'ID Поста', 'Дата', 'Сообщение', 'Категория', 'Ссылка', 'Просмотров', 'Реакции', 'Пересылки', 'Комментарии']
-    sheet.append(headers)
+    sheet1.append(headers)
 
     for item in parsed_data:
         row = [
@@ -419,11 +427,100 @@ def export_to_excel(request):
             item['forwards'],
             item['comments_count']
         ]
-        sheet.append(row)
+        sheet1.append(row)
 
+    # Prepare data for calculations
+    days_map = {
+        'Понедельник': 'Monday',
+        'Вторник': 'Tuesday',
+        'Среда': 'Wednesday',
+        'Четверг': 'Thursday',
+        'Пятница': 'Friday',
+        'Суббота': 'Saturday',
+        'Воскресенье': 'Sunday'
+    }
+    
+    # Sheet 2: Publications by Day of Week
+    sheet2 = workbook.create_sheet('Publications by Day')
+    sheet2.append(['День недели', 'Количество публикаций'])
+    publications_by_day = defaultdict(int)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        # Convert English day name to Russian
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                publications_by_day[ru_day] += 1
+    for day, count in publications_by_day.items():
+        sheet2.append([day, count])
+
+    # Sheet 3: Average ER Post by Day
+    sheet3 = workbook.create_sheet('Average ER Post by Day')
+    sheet3.append(['День недели', 'Средний ER Post'])
+    er_by_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                er_by_day[ru_day].append(float(item['er_post']))
+    for day, ers in er_by_day.items():
+        sheet3.append([day, mean(ers)])
+
+    # Sheet 4: Average VR Post by Day
+    sheet4 = workbook.create_sheet('Average VR Post by Day')
+    sheet4.append(['День недели', 'Средний VR Post'])
+    vr_by_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                vr_by_day[ru_day].append(float(item['vr_post']))
+    for day, vrs in vr_by_day.items():
+        sheet4.append([day, mean(vrs)])
+
+    # Sheet 5: Content Type Distribution
+    sheet5 = workbook.create_sheet('Content Type Distribution')
+    sheet5.append(['Тип контента', 'Процентное соотношение'])
+    content_types = defaultdict(int)
+    total_posts = len(parsed_data)
+    for item in parsed_data:
+        content_type = item['type']
+        if content_type == 'image':
+            content_types['image'] += 1
+        elif content_type == 'video':
+            content_types['video'] += 1
+        elif content_type == 'text':
+            content_types['text'] += 1
+    for content_type, count in content_types.items():
+        percentage = (count / total_posts) * 100
+        sheet5.append([content_type, percentage])
+
+    # Sheet 6: Top 3 Posts by Channel and Day (by VR Post)
+    sheet6 = workbook.create_sheet('Top 3 Posts by Channel-Day')
+    sheet6.append(['Дата', 'Канал', 'ID Поста', 'Сообщение', 'VR Post'])
+    posts_by_channel_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        channel = item['title']
+        key = (date, channel)
+        posts_by_channel_day[key].append({
+            'post_id': item['post_id'],
+            'message': item['message'],
+            'vr_post': float(item['vr_post'])
+        })
+    
+    for (date, channel), posts in posts_by_channel_day.items():
+        # Sort by VR Post and take top 3
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            sheet6.append([date, channel, post['post_id'], post['message'], post['vr_post']])
+
+    # Save the workbook
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename=telegram_data_{current_time}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename=telegram_data_{min_date}_to_{max_date}_{current_time}.xlsx'
     workbook.save(response)
     
     return response
