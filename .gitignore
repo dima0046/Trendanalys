@@ -51,3 +51,4 @@ trash_folder/
 *.joblib
 machine_learning/categorized_2024.json
 exported_model/
+staticfiles/

@@ -1,0 +1,240 @@
+{% extends 'myapp/base.html' %}
+{% load static %}
+
+{% block title %}Аналитическая панель Telegram{% endblock %}
+
+{% block content %}
+<!-- Подключаем Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Подключаем локальный Chart.js -->
+<script src="{% static 'myapp/js/chart.umd.min.js' %}"></script>
+
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .card {
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 200px;
+        }
+
+        .table th, .table td {
+            font-size: 0.85em;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <!-- Линейный график: Средний ER Post по дням недели -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0">Средний ER Post по дням недели</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="erByDayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Столбчатая диаграмма: Количество публикаций по дням недели -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0">Количество публикаций по дням недели</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="publicationsByDayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Круговая диаграмма: Распределение типов контента -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0">Распределение типов контента</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="contentTypesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица: Топ-3 постов -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="m-0">Топ-3 поста по каналам и дням (по VR Post)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Канал</th>
+                                    <th>ID Поста</th>
+                                    <th>Сообщение</th>
+                                    <th>VR Post</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for post in top_posts %}
+                                <tr>
+                                    <td>{{ post.date }}</td>
+                                    <td>{{ post.channel|default:"Не указано" }}</td>
+                                    <td>{{ post.post_id }}</td>
+                                    <td>{{ post.message|truncatechars:100 }}</td>
+                                    <td>{{ post.vr_post|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5">Нет данных для отображения</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Проверка загрузки Chart.js
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js не загружен! Проверьте путь к файлу chart.umd.min.js');
+    } else {
+        console.log('Chart.js загружен успешно');
+
+        // Проверка данных
+        const publicationsByDay = {{ publications_by_day|safe }} || {};
+        const erByDay = {{ er_by_day|safe }} || {};
+        const contentTypes = {{ content_types|safe }} || {};
+
+        console.log("Publications by Day:", publicationsByDay);
+        console.log("ER by Day:", erByDay);
+        console.log("Content Types:", contentTypes);
+
+        // Проверка элементов canvas
+        const erCanvas = document.getElementById('erByDayChart');
+        const pubCanvas = document.getElementById('publicationsByDayChart');
+        const contentCanvas = document.getElementById('contentTypesChart');
+
+        if (!erCanvas || !pubCanvas || !contentCanvas) {
+            console.error('Один или несколько элементов canvas не найдены!');
+        } else {
+            console.log('Все элементы canvas найдены');
+
+            const daysOfWeek = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
+            // Линейный график: ER by Day
+            const erData = daysOfWeek.map(day => erByDay[day] || 0);
+            console.log("ER Data:", erData);
+            new Chart(erCanvas, {
+                type: 'line',
+                data: {
+                    labels: daysOfWeek,
+                    datasets: [{
+                        label: 'Средний ER Post',
+                        data: erData,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Столбчатая диаграмма: Publications by Day
+            const publicationsData = daysOfWeek.map(day => publicationsByDay[day] || 0);
+            console.log("Publications Data:", publicationsData);
+            new Chart(pubCanvas, {
+                type: 'bar',
+                data: {
+                    labels: daysOfWeek,
+                    datasets: [{
+                        label: 'Количество публикаций',
+                        data: publicationsData,
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // Круговая диаграмма: Content Types
+            const contentLabels = Object.keys(contentTypes);
+            const contentData = Object.values(contentTypes);
+            console.log("Content Labels:", contentLabels);
+            console.log("Content Data:", contentData);
+            new Chart(contentCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: contentLabels,
+                    datasets: [{
+                        label: 'Типы контента',
+                        data: contentData,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.6)',
+                            'rgba(54, 162, 235, 0.6)',
+                            'rgba(255, 206, 86, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    }
+</script>
+
+{% endblock %}

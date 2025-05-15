@@ -274,11 +274,9 @@ async def telegram_view(request):
             all_data = []
             data_id_list = []
 
-            # Process each channel URL asynchronously
             for channel_url in channel_urls:
                 channel_url = channel_url.strip()
                 if channel_url:
-                    # Use await to call the async function
                     data, data_id = await fetch_telegram_data(channel_url, start_date, end_date)
                     all_data.extend(data)
                     data_id_list.append(data_id)
@@ -297,7 +295,6 @@ async def telegram_view(request):
                    (not category_filters or 'all' in category_filters or item['category'] in category_filters)
             ]
             
-            # Sort data
             reverse = sort_direction == 'desc'
             if sort_by == 'channel':
                 filtered_data.sort(key=lambda x: x['title'], reverse=reverse)
@@ -308,13 +305,81 @@ async def telegram_view(request):
             elif sort_by == 'category':
                 filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
 
-            # Extract unique categories from filtered_data
             unique_categories_in_data = sorted(list(set(item['category'] for item in filtered_data if item['category'])))
-
             paginator = Paginator(filtered_data, 20)
             page_number = request.GET.get('page')
             page_obj = paginator.get_page(page_number)
-            return render(request, 'myapp/telegram_form.html', {
+
+            # Подготовка данных для графиков
+            days_map = {
+                'Понедельник': 'Monday',
+                'Вторник': 'Tuesday',
+                'Среда': 'Wednesday',
+                'Четверг': 'Thursday',
+                'Пятница': 'Friday',
+                'Суббота': 'Saturday',
+                'Воскресенье': 'Sunday'
+            }
+            publications_by_day = defaultdict(int)
+            er_by_day = defaultdict(list)
+            vr_by_day = defaultdict(list)
+            content_types = defaultdict(int)
+            top_posts_data = []
+
+            for item in all_data:
+                date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+                day_name = date.strftime('%A')
+                for ru_day, en_day in days_map.items():
+                    if en_day == day_name:
+                        publications_by_day[ru_day] += 1
+                        try:
+                            er_by_day[ru_day].append(float(item.get('er_post', 0)))
+                        except (ValueError, TypeError):
+                            er_by_day[ru_day].append(0)
+                        try:
+                            vr_by_day[ru_day].append(float(item.get('vr_post', 0)))
+                        except (ValueError, TypeError):
+                            vr_by_day[ru_day].append(0)
+                content_type = item.get('type', 'unknown').lower()
+                if content_type in ['image', 'video', 'text']:
+                    content_types[content_type] += 1
+
+            er_by_day_data = {day: mean(ers) for day, ers in er_by_day.items() if ers}
+            vr_by_day_data = {day: mean(vrs) for day, vrs in vr_by_day.items() if vrs}
+            content_types_data = {content_type: (count / len(all_data)) * 100 for content_type, count in content_types.items() if count > 0}
+
+            posts_by_channel_day = defaultdict(list)
+            for item in all_data:
+                date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+                channel = item['title']
+                key = (date, channel)
+                posts_by_channel_day[key].append({
+                    'post_id': item['post_id'],
+                    'message': item['message'],
+                    'vr_post': float(item['vr_post'])
+                })
+            
+            for (date, channel), posts in posts_by_channel_day.items():
+                top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+                for post in top_posts:
+                    top_posts_data.append({
+                        'date': date,
+                        'channel': channel,
+                        'post_id': post['post_id'],
+                        'message': post['message'],
+                        'vr_post': post['vr_post']
+                    })
+
+            for day in days_map.keys():
+                if day not in publications_by_day:
+                    publications_by_day[day] = 0
+                if day not in er_by_day_data:
+                    er_by_day_data[day] = 0
+                if day not in vr_by_day_data:
+                    vr_by_day_data[day] = 0
+
+            context = {
+                'data_id': data_id,
                 'form': form,
                 'parsed_data': page_obj,
                 'data_id': combined_data_id,
@@ -326,9 +391,16 @@ async def telegram_view(request):
                 'end_date': request.POST.get('end_date'),
                 'sort_by': sort_by,
                 'sort_direction': sort_direction,
-                'unique_categories': get_unique_categories(),  # For dropdown in table
-                'unique_categories_in_data': unique_categories_in_data,  # For filters
-            })
+                'unique_categories': get_unique_categories(),
+                'unique_categories_in_data': unique_categories_in_data,
+                'publications_by_day': json.dumps(dict(publications_by_day)),
+                'er_by_day': json.dumps(er_by_day_data),
+                'vr_by_day': json.dumps(vr_by_day_data),
+                'content_types': json.dumps(content_types_data),
+                'top_posts': top_posts_data,
+            }
+            print("Rendering telegram_main.html with data_id:", data_id)  # Отладка
+            return render(request, 'myapp/telegram/telegram_main.html', context)
     else:
         form = TelegramForm(initial={
             'channel_url': channel_url,
@@ -342,7 +414,6 @@ async def telegram_view(request):
             with open(f'temp_data/{data_id}.json', 'r', encoding='utf-8') as f:
                 parsed_data = json.load(f)
             logger.debug(f"Loaded parsed data with {len(parsed_data)} posts")
-            logger.debug(f"Avatar paths in parsed data: {[item['avatar'] for item in parsed_data if item['avatar']]}")
         except FileNotFoundError:
             logger.error(f"Data file not found: temp_data/{data_id}.json")
     
@@ -354,7 +425,6 @@ async def telegram_view(request):
            (not category_filters or 'all' in category_filters or item['category'] in category_filters)
     ]
     
-    # Sort data
     reverse = sort_direction == 'desc'
     if sort_by == 'channel':
         filtered_data.sort(key=lambda x: x['title'], reverse=reverse)
@@ -365,14 +435,80 @@ async def telegram_view(request):
     elif sort_by == 'category':
         filtered_data.sort(key=lambda x: x['category'], reverse=reverse)
 
-    # Extract unique categories from filtered_data
     unique_categories_in_data = sorted(list(set(item['category'] for item in filtered_data if item['category'])))
-
     paginator = Paginator(filtered_data, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'myapp/telegram_form.html', {
+    # Подготовка данных для графиков
+    days_map = {
+        'Понедельник': 'Monday',
+        'Вторник': 'Tuesday',
+        'Среда': 'Wednesday',
+        'Четверг': 'Thursday',
+        'Пятница': 'Friday',
+        'Суббота': 'Saturday',
+        'Воскресенье': 'Sunday'
+    }
+    publications_by_day = defaultdict(int)
+    er_by_day = defaultdict(list)
+    vr_by_day = defaultdict(list)
+    content_types = defaultdict(int)
+    top_posts_data = []
+
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                publications_by_day[ru_day] += 1
+                try:
+                    er_by_day[ru_day].append(float(item.get('er_post', 0)))
+                except (ValueError, TypeError):
+                    er_by_day[ru_day].append(0)
+                try:
+                    vr_by_day[ru_day].append(float(item.get('vr_post', 0)))
+                except (ValueError, TypeTypeError):
+                    vr_by_day[ru_day].append(0)
+        content_type = item.get('type', 'unknown').lower()
+        if content_type in ['image', 'video', 'text']:
+            content_types[content_type] += 1
+
+    er_by_day_data = {day: mean(ers) for day, ers in er_by_day.items() if ers}
+    vr_by_day_data = {day: mean(vrs) for day, vrs in vr_by_day.items() if vrs}
+    content_types_data = {content_type: (count / len(parsed_data)) * 100 for content_type, count in content_types.items() if count > 0}
+
+    posts_by_channel_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        channel = item['title']
+        key = (date, channel)
+        posts_by_channel_day[key].append({
+            'post_id': item['post_id'],
+            'message': item['message'],
+            'vr_post': float(item['vr_post'])
+        })
+    
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            top_posts_data.append({
+                'date': date,
+                'channel': channel,
+                'post_id': post['post_id'],
+                'message': post['message'],
+                'vr_post': post['vr_post']
+            })
+
+    for day in days_map.keys():
+        if day not in publications_by_day:
+            publications_by_day[day] = 0
+        if day not in er_by_day_data:
+            er_by_day_data[day] = 0
+        if day not in vr_by_day_data:
+            vr_by_day_data[day] = 0
+
+    context = {
         'form': form,
         'parsed_data': page_obj,
         'data_id': data_id,
@@ -386,7 +522,13 @@ async def telegram_view(request):
         'sort_direction': sort_direction,
         'unique_categories': get_unique_categories(),
         'unique_categories_in_data': unique_categories_in_data,
-    })
+        'publications_by_day': json.dumps(dict(publications_by_day)),
+        'er_by_day': json.dumps(er_by_day_data),
+        'vr_by_day': json.dumps(vr_by_day_data),
+        'content_types': json.dumps(content_types_data),
+        'top_posts': top_posts_data,
+    }
+    return render(request, 'myapp/telegram/telegram_main.html', context)
 
 def export_to_excel(request):
     data_id = request.GET.get('data_id')
@@ -712,6 +854,135 @@ def apply_changes(request):
 
     logger.error("Invalid request method")
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+
+def analytics_dashboard(request):
+    data_id = request.GET.get('data_id')
+    print("Received data_id in analytics_dashboard:", data_id)
+    if not data_id:
+        return HttpResponse("No data ID provided.", status=400)
+
+    file_path = f"temp_data/{data_id}.json"
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            parsed_data = json.load(f)
+        print("Successfully loaded data for data_id:", data_id)
+    except FileNotFoundError:
+        print("File not found for data_id:", data_id)
+        return HttpResponse("Data file not found.", status=404)
+
+    # Prepare data for calculations
+    days_map = {
+        'Понедельник': 'Monday',
+        'Вторник': 'Tuesday',
+        'Среда': 'Wednesday',
+        'Четверг': 'Thursday',
+        'Пятница': 'Friday',
+        'Суббота': 'Saturday',
+        'Воскресенье': 'Sunday'
+    }
+    
+    # 1. Publications by Day of Week
+    publications_by_day = defaultdict(int)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                publications_by_day[ru_day] += 1
+    publications_by_day_data = dict(publications_by_day)
+
+    # 2. Average ER Post by Day
+    er_by_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                try:
+                    er_by_day[ru_day].append(float(item.get('er_post', 0)))
+                except (ValueError, TypeError):
+                    er_by_day[ru_day].append(0)
+    er_by_day_data = {day: mean(ers) for day, ers in er_by_day.items() if ers}
+
+    # 3. Average VR Post by Day
+    vr_by_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                try:
+                    vr_by_day[ru_day].append(float(item.get('vr_post', 0)))
+                except (ValueError, TypeError):
+                    vr_by_day[ru_day].append(0)
+    vr_by_day_data = {day: mean(vrs) for day, vrs in vr_by_day.items() if vrs}
+
+    # 4. Content Type Distribution
+    content_types = defaultdict(int)
+    total_posts = len(parsed_data)
+    for item in parsed_data:
+        content_type = item.get('type', 'unknown').lower()
+        if content_type in ['image', 'video', 'text']:
+            content_types[content_type] += 1
+    content_types_data = {content_type: (count / total_posts) * 100 for content_type, count in content_types.items() if count > 0}
+
+    # 5. Top 3 Posts by Channel and Day (by VR Post)
+    top_posts_data = []
+    posts_by_channel_day = defaultdict(list)
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        channel = item['title']
+        key = (date, channel)
+        posts_by_channel_day[key].append({
+            'post_id': item['post_id'],
+            'message': item['message'],
+            'vr_post': float(item['vr_post'])
+        })
+    
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            top_posts_data.append({
+                'date': date,
+                'channel': channel,
+                'post_id': post['post_id'],
+                'message': post['message'],
+                'vr_post': post['vr_post']
+            })
+
+    # Ensure all days are present
+    for day in days_map.keys():
+        if day not in publications_by_day_data:
+            publications_by_day_data[day] = 0
+        if day not in er_by_day_data:
+            er_by_day_data[day] = 0
+        if day not in vr_by_day_data:
+            vr_by_day_data[day] = 0
+
+    # Debug output
+    print("Publications by Day:", publications_by_day_data)
+    print("ER by Day:", er_by_day_data)
+    print("VR by Day:", vr_by_day_data)
+    print("Content Types:", content_types_data)
+    print("Top Posts:", top_posts_data)
+
+    context = {
+        'data_id': data_id,
+        'publications_by_day': json.dumps(publications_by_day_data),
+        'er_by_day': json.dumps(er_by_day_data),
+        'vr_by_day': json.dumps(vr_by_day_data),
+        'content_types': json.dumps(content_types_data),
+        'top_posts': top_posts_data,
+    }
+    print("Serialized Publications by Day:", json.dumps(publications_by_day_data))
+    print("Serialized ER by Day:", json.dumps(er_by_day_data))
+    print("Serialized VR by Day:", json.dumps(vr_by_day_data))
+    print("Serialized Content Types:", json.dumps(content_types_data))
+    # Исправляем путь к шаблону
+    return render(request, 'myapp/telegram/charts.html', context)
+
 
 def export_model_view(request):
     """

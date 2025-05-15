@@ -5,7 +5,7 @@
     --sidebar-width: 150px;
     --sidebar-bg: #1a1a1a;
     --sidebar-header-bg: #212531;
-    --content-padding: 30px;
+    --content-padding: 15px; /* Уменьшаем отступы */
     --transition-speed: 0.3s;
     --primary-text-color: #ddd;
     --active-text-color: #fff;
@@ -42,6 +42,7 @@ html {
     min-height: 100vh;
     overflow-x: hidden;
     transition: all var(--transition-speed) ease;
+    width: 100%; /* Растягиваем на всю ширину */
 }
 
 /* Sidebar */
@@ -72,12 +73,14 @@ html {
     margin-left: var(--sidebar-width);
     padding: 70px var(--content-padding) var(--content-padding) var(--content-padding);
     transition: all var(--transition-speed) ease;
-    width: 100%;
+    width: calc(100% - var(--sidebar-width)); /* Учитываем ширину боковой панели */
     overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 #wrapper.toggled #page-content-wrapper {
     margin-left: 0;
+    width: 100%; /* Растягиваем, когда боковая панель скрыта */
 }
 
 /* Sidebar Navigation */

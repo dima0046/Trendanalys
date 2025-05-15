@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from myapp.views import index, telegram_view, export_to_excel, apply_changes, update_post_category, export_model_view, get_post_details
+from myapp.views import index, telegram_view, export_to_excel, apply_changes, update_post_category, export_model_view, get_post_details,analytics_dashboard
 from asgiref.sync import async_to_sync
 
 urlpatterns = [
@@ -12,4 +12,5 @@ urlpatterns = [
     path('update_post_category/', update_post_category, name='update_post_category'),
     path('apply_changes/', apply_changes, name='apply_changes'),
     path('export_model/', export_model_view, name='export_model'),
+    path('analytics_dashboard/', analytics_dashboard, name='analytics_dashboard'),  # New URL pattern
 ]
