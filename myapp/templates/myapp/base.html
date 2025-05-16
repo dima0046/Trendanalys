@@ -41,51 +41,25 @@
                             <span class="nav-link">Привет, {{ user.username }}!</span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#passwordChangeModal">Сменить пароль</a>
+                            <a class="nav-link" href="{% url 'password_change' %}">Сменить пароль</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'logout' %}">Выйти</a>
+                            <a class="nav-link" href="{% url 'custom_logout' %}">Выйти</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#loginModal">Войти</a>
+                            <a class="nav-link" href="{% url 'custom_login' %}">Войти</a>
                         </li>
                     {% endif %}
             </div>
         </div>
-    </nav>
+</nav>
 
-    <!-- Основное содержимое -->
     <div class="container-fluid">
         {% block content %}
         {% endblock %}
     </div>
 
-    <!-- Подключение модальных окон -->
-    {% include 'myapp/login.html' %}
-    {% include 'myapp/password_change.html' %}
-    {% include 'myapp/password_change_done.html' %}
-
-    <!-- Подключаем Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script>
-        // Автоматическое открытие модального окна после смены пароля или при ошибке
-        {% if messages %}
-            {% for message in messages %}
-                {% if 'password_change_done' in message.tags %}
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const passwordChangeDoneModal = new bootstrap.Modal(document.getElementById('passwordChangeDoneModal'));
-                        passwordChangeDoneModal.show();
-                    });
-                {% elif message.tags == 'error' %}
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const passwordChangeModal = new bootstrap.Modal(document.getElementById('passwordChangeModal'));
-                        passwordChangeModal.show();
-                    });
-                {% endif %}
-            {% endfor %}
-        {% endif %}
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -15,8 +15,7 @@ from django.contrib import messages
 from django.contrib.auth.views import PasswordChangeView
 
 # Forms
-from .forms import TelegramForm
-
+from .forms import TelegramForm, CustomAuthenticationForm, CustomPasswordChangeForm
 # Regular expressions
 import re
 
@@ -77,45 +76,50 @@ model, vectorizer = load_model()
 def index(request):
     return render(request, 'myapp/base.html')
 
+def index(request):
+    return render(request, 'myapp/base.html')
+
 def custom_logout(request):
     logout(request)
-    return redirect('index')  # Перенаправление на главную страницу
+    messages.success(request, "Вы успешно вышли!")
+    return redirect('index')
 
 def custom_login(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            # Успешный вход: перенаправляем на текущую страницу или главную
-            next_url = request.POST.get('next', request.GET.get('next', 'index'))
-            messages.success(request, "Вы успешно вошли!")
-            return redirect(next_url)
+        form = CustomAuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                next_url = request.POST.get('next', request.GET.get('next', 'index'))
+                messages.success(request, "Вы успешно вошли!")
+                return redirect(next_url)
+            else:
+                messages.error(request, "Неверное имя пользователя или пароль.")
         else:
-            # Ошибка входа: добавляем сообщение и возвращаем на текущую страницу
-            messages.error(request, "Неверное имя пользователя или пароль. Пожалуйста, попробуйте снова.")
-            return redirect('login')  # Перенаправляем обратно на страницу входа
-    return render(request, 'myapp/login.html')
+            messages.error(request, "Ошибка в данных формы.")
+    else:
+        form = CustomAuthenticationForm()
+    return render(request, 'myapp/login.html', {'form': form})
 
+def password_change_done(request):
+    return render(request, 'myapp/password_change_done.html')
 
 class CustomPasswordChangeView(PasswordChangeView):
+    form_class = CustomPasswordChangeForm
     template_name = 'myapp/password_change.html'
-    success_url = '/password_change/done/'
+    success_url = '/password_change_done/'  # Оставляем как есть, но теперь маршрут будет работать
 
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, "Ваш пароль успешно изменён!")
-        return redirect(self.get_success_url())
+        return response
 
     def form_invalid(self, form):
         messages.error(self.request, "Ошибка при смене пароля. Проверьте введённые данные.")
-        return render(self.request, self.template_name, {'form': form})
-
-    def post(self, request, *args, **kwargs):
-        if 'next' in request.POST:
-            self.success_url = request.POST.get('next')
-        return super().post(request, *args, **kwargs)
+        return self.render_to_response(self.get_context_data(form=form))
 
 def cleanup_temp_data(folder='temp_data', max_age_seconds=86400):
     """
