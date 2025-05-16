@@ -8,10 +8,10 @@ urlpatterns = [
     path('', index, name='index'),  # Домашняя страница
     path('telegram/', telegram_view, name='telegram'),  # Страница Telegram
     path('export/', export_to_excel, name='export_to_excel'),
-    path('post-details/', get_post_details, name='post_details'),
+    path('get_post_details/', get_post_details, name='get_post_details'),
     path('update-category/', update_post_category, name='update_category'),
     path('apply-changes/', apply_changes, name='apply_changes'),
-    path('analytics/', analytics_dashboard, name='analytics_dashboard'),
+    path('analytics_dashboard/', analytics_dashboard, name='analytics_dashboard'),
     path('export-model/', export_model_view, name='export_model'),
     # Добавляем маршруты для авторизации
     path('login/', custom_login, name='login'),  # Новое представление

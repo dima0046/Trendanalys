@@ -738,7 +738,7 @@ async def get_post_details(request):
         post_id = request.GET.get('post_id')
         channel_id = request.GET.get('channel_id')
         page = int(request.GET.get('page', 1))
-        limit = 10
+        limit = int(request.GET.get('limit', 10))
 
         if not post_id or not channel_id:
             logger.error(f"Missing or empty post_id or channel_id: post_id={post_id}, channel_id={channel_id}")
@@ -784,7 +784,9 @@ async def get_post_details(request):
 
                 comments_data = []
                 if hasattr(post, 'replies') and post.replies and post.replies.replies > 0:
-                    async for comment in client.iter_messages(entity, reply_to=post.id, limit=50):
+                    # Получаем все комментарии
+                    all_comments = []
+                    async for comment in client.iter_messages(entity, reply_to=post.id):
                         if isinstance(comment, types.Message):
                             author = await comment.get_sender()
                             author_name = author.username if author and hasattr(author, 'username') else 'Аноним'
@@ -792,21 +794,24 @@ async def get_post_details(request):
                             comment_replies = comment.replies.replies if hasattr(comment, 'replies') and comment.replies and comment.replies.replies is not None else 0
                             comment_forwards = comment.forwards if hasattr(comment, 'forwards') and comment.forwards is not None else 0
 
-                            comments_data.append({
+                            all_comments.append({
                                 'message': comment.message or '[Без текста]',
                                 'date': comment.date.strftime('%Y-%m-%d %H:%M:%S') if comment.date else 'N/A',
                                 'author': author_name,
                                 'forwards': comment_forwards,
                                 'replies': comment_replies
                             })
-                    logger.debug(f"Fetched {len(comments_data)} comments for post {post_id}")
+                    logger.debug(f"Fetched {len(all_comments)} comments for post {post_id}")
+
+                    # Применяем пагинацию на стороне Python
+                    start_idx = (page - 1) * limit
+                    end_idx = start_idx + limit
+                    paginated_comments = all_comments[start_idx:end_idx]
+                    total_comments = len(all_comments)
                 else:
                     logger.debug(f"No replies found for post {post_id}")
-
-                total_comments = len(comments_data)
-                start = (page - 1) * limit
-                end = min(start + limit, total_comments)
-                paginated_comments = comments_data[start:end]
+                    paginated_comments = []
+                    total_comments = 0
 
                 response_data = {
                     'reactions': reactions,
@@ -824,6 +829,7 @@ async def get_post_details(request):
         finally:
             if client.is_connected():
                 await client.disconnect()
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 def update_post_category(request):
     """

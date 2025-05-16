@@ -504,18 +504,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     checkForChanges();
 
-    async function loadPostDetails(postId, channelId, page = 1) {
-        currentPostId = postId;
-        currentChannelId = channelId;
-        currentPage = page;
+        async function loadPostDetails(postId, channelId, page = 1) {
+            currentPostId = postId;
+            currentChannelId = channelId;
+            currentPage = page;
 
-        try {
-            const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
-            }
-            const data = await response.json();
+            try {
+                const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                }
+                const data = await response.json();
 
             const row = Array.from(postRows).find(row => row.getAttribute('data-post-id') === postId);
             document.getElementById('detail-post-text').textContent = row.querySelector('td:nth-child(2)').textContent.trim() || 'Текст поста отсутствует';
