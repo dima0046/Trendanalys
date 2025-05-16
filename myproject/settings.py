@@ -84,6 +84,18 @@ DATABASES = {
 }
 
 
+# URL для перенаправления после входа
+LOGIN_REDIRECT_URL = '/'  # Перенаправление на telegram_main.html после входа
+# URL для перенаправления после выхода
+LOGOUT_REDIRECT_URL = 'index'  # Имя URL-паттерна для домашней MIDDLEWARE
+# URL для страницы входа
+LOGIN_URL = '/login/'  # Страница входа
+
+
+# Убедимся, что временная зона настроена корректно
+  # Устанавливаем временную зону (замените на вашу, если нужно)
+
+
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -108,7 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 

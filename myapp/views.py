@@ -1,7 +1,15 @@
 # Django imports
 from django.shortcuts import render
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
+from django.http import JsonResponse
 from django.core.paginator import Paginator
+from asgiref.sync import sync_to_async
+
+# Django users imports
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth import logout
+from django.shortcuts import redirect
 
 # Forms
 from .forms import TelegramForm
@@ -10,7 +18,8 @@ from .forms import TelegramForm
 import re
 
 # Date and time
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 import time
 
 # Telegram related imports
@@ -38,7 +47,11 @@ import os
 from dotenv import load_dotenv
 
 # Machine learning imports
-from machine_learning.train_model import load_model, predict_category, update_model, get_unique_categories, export_model
+from machine_learning.train_model import load_model
+from machine_learning.train_model import predict_category
+from machine_learning.train_model import update_model
+from machine_learning.train_model import get_unique_categories
+from machine_learning.train_model import export_model
 
 # Image processing
 from PIL import Image
@@ -55,6 +68,13 @@ logger = logging.getLogger(__name__)
 
 # Загрузка модели и векторизатора при старте
 model, vectorizer = load_model()
+
+def index(request):
+    return render(request, 'myapp/base.html')
+
+def custom_logout(request):
+    logout(request)
+    return redirect('index')  # Перенаправление на главную страницу
 
 def cleanup_temp_data(folder='temp_data', max_age_seconds=86400):
     """
@@ -75,6 +95,7 @@ def extract_username(url):
     if match:
         return match.group(1)
     raise ValueError("Invalid Telegram URL")
+
 
 async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
     global model, vectorizer
@@ -249,10 +270,11 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         if client.is_connected():
             await client.disconnect()
 
-def index(request):
-    return render(request, 'myapp/base.html')
-
 # Внутри telegram_view
+from asgiref.sync import sync_to_async
+# ... (остальные импорты остаются без изменений)
+
+@login_required
 async def telegram_view(request):
     cleanup_temp_data()
 
@@ -400,7 +422,8 @@ async def telegram_view(request):
                 'top_posts': top_posts_data,
             }
             print("Rendering telegram_main.html with data_id:", data_id)  # Отладка
-            return render(request, 'myapp/telegram/telegram_main.html', context)
+            # Оборачиваем render в sync_to_async
+            return await sync_to_async(render)(request, 'myapp/telegram/telegram_main.html', context)
     else:
         form = TelegramForm(initial={
             'channel_url': channel_url,
@@ -468,7 +491,7 @@ async def telegram_view(request):
                     er_by_day[ru_day].append(0)
                 try:
                     vr_by_day[ru_day].append(float(item.get('vr_post', 0)))
-                except (ValueError, TypeTypeError):
+                except (ValueError, TypeError):
                     vr_by_day[ru_day].append(0)
         content_type = item.get('type', 'unknown').lower()
         if content_type in ['image', 'video', 'text']:
@@ -528,7 +551,9 @@ async def telegram_view(request):
         'content_types': json.dumps(content_types_data),
         'top_posts': top_posts_data,
     }
-    return render(request, 'myapp/telegram/telegram_main.html', context)
+    # Оборачиваем render в sync_to_async
+    return await sync_to_async(render)(request, 'myapp/telegram/telegram_main.html', context)
+
 
 def export_to_excel(request):
     data_id = request.GET.get('data_id')
@@ -664,7 +689,7 @@ def export_to_excel(request):
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=telegram_data_{min_date}_to_{max_date}_{current_time}.xlsx'
     workbook.save(response)
-    
+
     return response
 
 async def get_post_details(request):
@@ -854,8 +879,6 @@ def apply_changes(request):
 
     logger.error("Invalid request method")
     return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-
 
 def analytics_dashboard(request):
     data_id = request.GET.get('data_id')

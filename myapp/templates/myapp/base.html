@@ -18,21 +18,39 @@
     <!-- Навигационная панель -->
     <nav class="navbar navbar-brand navbar-expand-lg navbar-light bg-light fixed-top">
         <div class="container-fluid">
-            <a>
+            <a class="navbar-brand" href="{% url 'index' %}">
                 <img src="{% static 'myapp/Images/logo.png' %}" alt="Логотип" width="50" height="50">
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'telegram' %}">Telegram</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">Вконтакте</a>
                     </li>
+                    {% endif %}
                 </ul>
+                <ul class="navbar-nav ms-auto">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <span class="nav-link">Привет, {{ user.username }}!</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'password_change' %}">Сменить пароль</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'logout' %}">Выйти</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'login' %}">Войти</a>
+                        </li>
+                    {% endif %}
             </div>
         </div>
     </nav>
