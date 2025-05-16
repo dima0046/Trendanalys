@@ -315,9 +315,6 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
         if client.is_connected():
             await client.disconnect()
 
-# Внутри telegram_view
-
-# ... (остальные импорты остаются без изменений)
 
 @login_required
 async def telegram_view(request):
