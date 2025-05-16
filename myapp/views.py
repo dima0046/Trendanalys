@@ -10,6 +10,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import logout
 from django.shortcuts import redirect
+from django.contrib.auth import authenticate, login
+from django.contrib import messages
+from django.contrib.auth.views import PasswordChangeView
 
 # Forms
 from .forms import TelegramForm
@@ -59,6 +62,8 @@ import io
 from collections import defaultdict
 from statistics import mean
 
+from asgiref.sync import sync_to_async
+
 load_dotenv()
 api_id = os.getenv("API_ID")  
 api_hash = os.getenv("API_HASH")  
@@ -75,6 +80,42 @@ def index(request):
 def custom_logout(request):
     logout(request)
     return redirect('index')  # Перенаправление на главную страницу
+
+def custom_login(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            # Успешный вход: перенаправляем на текущую страницу или главную
+            next_url = request.POST.get('next', request.GET.get('next', 'index'))
+            messages.success(request, "Вы успешно вошли!")
+            return redirect(next_url)
+        else:
+            # Ошибка входа: добавляем сообщение и возвращаем на текущую страницу
+            messages.error(request, "Неверное имя пользователя или пароль. Пожалуйста, попробуйте снова.")
+            return redirect('login')  # Перенаправляем обратно на страницу входа
+    return render(request, 'myapp/login.html')
+
+
+class CustomPasswordChangeView(PasswordChangeView):
+    template_name = 'myapp/password_change.html'
+    success_url = '/password_change/done/'
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, "Ваш пароль успешно изменён!")
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Ошибка при смене пароля. Проверьте введённые данные.")
+        return render(self.request, self.template_name, {'form': form})
+
+    def post(self, request, *args, **kwargs):
+        if 'next' in request.POST:
+            self.success_url = request.POST.get('next')
+        return super().post(request, *args, **kwargs)
 
 def cleanup_temp_data(folder='temp_data', max_age_seconds=86400):
     """
@@ -271,7 +312,7 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
             await client.disconnect()
 
 # Внутри telegram_view
-from asgiref.sync import sync_to_async
+
 # ... (остальные импорты остаются без изменений)
 
 @login_required
