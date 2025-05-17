@@ -5,61 +5,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Парсеры{% endblock %}</title>
+    <title>{% block title %}TrendWatcher - Анализ соцсетей{% endblock %}</title>
     <!-- Подключаем Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome для иконок -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6e45e2;
+            --secondary: #88d3ce;
+            --dark: #1a1a2e;
+            --light: #f8f9fa;
+            --accent: #ff7e5f;
+        }
+        
         body {
-            padding-top: 70px; /* Отступ для фиксированного navbar */
+            padding-top: 80px;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 0.8rem 1rem;
+            border-bottom: none;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+        }
+        
+        .navbar-brand img {
+            margin-right: 10px;
+            transition: transform 0.3s ease;
+        }
+        
+        .navbar-brand:hover img {
+            transform: rotate(15deg);
+        }
+        
+        .nav-link {
+            font-weight: 500;
+            color: var(--dark);
+            padding: 0.5rem 1rem;
+            margin: 0 0.2rem;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-link:hover, .nav-link:focus {
+            color: var(--primary);
+            background: rgba(110, 69, 226, 0.1);
+        }
+        
+        .nav-link.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 1rem;
+            right: 1rem;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+        
+        .navbar-toggler {
+            border: none;
+            padding: 0.5rem;
+        }
+        
+        .navbar-toggler:focus {
+            box-shadow: none;
+        }
+        
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .dropdown-item {
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .dropdown-item:hover, .dropdown-item:focus {
+            background: rgba(110, 69, 226, 0.1);
+            color: var(--primary);
+        }
+        
+        .user-greeting {
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                padding: 1rem;
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                border-radius: 0 0 16px 16px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                margin-top: 10px;
+            }
+            
+            .nav-link {
+                margin: 0.2rem 0;
+                padding: 0.8rem 1rem;
+            }
+            
+            .nav-link.active::after {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
     <!-- Навигационная панель -->
-    <nav class="navbar navbar-brand navbar-expand-lg navbar-light bg-light fixed-top">
-        <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container">
             <a class="navbar-brand" href="{% url 'index' %}">
-                <img src="{% static 'myapp/Images/logo.png' %}" alt="Логотип" width="50" height="50">
+                <img src="{% static 'myapp/Images/logo.png' %}" alt="Логотип" width="40" height="40">
+                <span class="d-none d-sm-inline">TrendWatcher</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'telegram' %}">Telegram</a>
+                        <a class="nav-link {% if request.path == '/telegram/' %}active{% endif %}" href="{% url 'telegram' %}">
+                            <i class="fab fa-telegram me-1"></i> Telegram
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Вконтакте</a>
+                        <a class="nav-link {% if request.path == '/vk/' %}active{% endif %}" href="#">
+                            <i class="fab fa-vk me-1"></i> ВКонтакте
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-plus-circle me-1"></i> Еще
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="moreDropdown">
+                            <li><a class="dropdown-item" href="#"><i class="fab fa-instagram me-2"></i> Instagram</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fab fa-youtube me-2"></i> YouTube</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fab fa-twitter me-2"></i> Twitter</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-chart-line me-2"></i> Все анализы</a></li>
+                        </ul>
                     </li>
                     {% endif %}
                 </ul>
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
-                        <li class="nav-item">
-                            <span class="nav-link">Привет, {{ user.username }}!</span>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'password_change' %}">Сменить пароль</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'custom_logout' %}">Выйти</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="user-greeting me-2">Привет, {{ user.username }}!</span>
+                                <i class="fas fa-user-circle fs-4"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i> Профиль</a></li>
+                                <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="fas fa-key me-2"></i> Сменить пароль</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'custom_logout' %}"><i class="fas fa-sign-out-alt me-2"></i> Выйти</a></li>
+                            </ul>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'custom_login' %}">Войти</a>
+                            <a class="nav-link" href="{% url 'custom_login' %}">
+                                <i class="fas fa-sign-in-alt me-1"></i> Войти
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="btn btn-primary ms-2 px-3" href="#">
+                                <i class="fas fa-user-plus me-1"></i> Регистрация
+                            </a>
                         </li>
                     {% endif %}
+                </ul>
             </div>
         </div>
-</nav>
+    </nav>
 
-    <div class="container-fluid">
+    <div class="container-fluid px-0">
         {% block content %}
         {% endblock %}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Анимация навбара при скролле
+        document.addEventListener('DOMContentLoaded', function() {
+            const navbar = document.querySelector('.navbar');
+            
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 10) {
+                    navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+                    navbar.style.background = 'rgba(255, 255, 255, 0.98)';
+                } else {
+                    navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                    navbar.style.background = 'rgba(255, 255, 255, 0.95)';
+                }
+            });
+            
+            // Подсветка активного пункта меню
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
