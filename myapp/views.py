@@ -74,10 +74,7 @@ logger = logging.getLogger(__name__)
 model, vectorizer = load_model()
 
 def index(request):
-    return render(request, 'myapp/base.html')
-
-def index(request):
-    return render(request, 'myapp/base.html')
+    return render(request, 'myapp/index.html')
 
 def custom_logout(request):
     logout(request)

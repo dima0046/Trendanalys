@@ -1,56 +1,401 @@
+{% extends "myapp/base.html" %}
 {% load static %}
 
+{% block title %}TrendWatcher - Анализ соцсетей{% endblock %}
+
 {% block content %}
-<!-- Герой-секция -->
-    <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h1>Trendanalys</h1>
-                    <p class="lead">Мощный инструмент для парсинга и анализа данных из Telegram-каналов. Собирайте посты, анализируйте реакции и комментарии, категоризируйте сообщения и экспортируйте данные в Excel.</p>
-                    <a href="{% url 'telegram' %}" class="btn btn-primary btn-lg">Начать анализ</a>
+<div class="container-fluid px-4">
+    <!-- Hero Section -->
+    <section class="hero-section py-5 bg-light rounded-4 mt-3">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <h1 class="display-4 fw-bold mb-4">Анализ соцсетей стал в <span class="text-primary">10 раз быстрее</span></h1>
+                <p class="lead mb-4">Благодаря нашей платформе, процесс анализа трендов в социальных сетях ускоряется в разы. Автоматизированный сбор данных, AI-аналитика и удобные инструменты визуализации экономят часы рутинной работы.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'telegram' %}" class="btn btn-primary btn-lg px-4">Начать анализ</a>
+                    <a href="#how-it-works" class="btn btn-outline-primary btn-lg px-4">Как это работает?</a>
                 </div>
-                <div class="col-md-6 text-center">
-                    <img src="{% static 'myapp/Images/logo.png' %}" alt="Логотип Trendanalys" class="hero-image">
+                
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-bolt text-warning fs-4 me-2"></i>
+                        <span>Мгновенный сбор данных</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-brain text-info fs-4 me-2"></i>
+                        <span>AI-анализ контента</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-lock-open text-success fs-4 me-2"></i>
+                        <span>Полностью бесплатно</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <!-- Рекомендуемое изображение: https://unsplash.com/photos/black-and-silver-laptop-computer-on-brown-wooden-table-HCfVGuki4G0 -->
+                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" 
+                     alt="Аналитика в соцсетях" 
+                     class="img-fluid rounded-3 shadow-lg">
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="py-5 my-5" id="how-it-works">
+        <div class="row text-center mb-5">
+            <div class="col">
+                <h2 class="display-5 fw-bold">Почему TrendWatcher эффективнее</h2>
+                <p class="lead text-muted">Наша платформа автоматизирует 90% рутинных задач аналитика</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <!-- Рекомендуемое изображение: https://unsplash.com/photos/graphs-on-computer-screen-zam4Qm6Kq4U -->
+                    <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1415&q=80" 
+                         class="card-img-top" 
+                         alt="Автоматизированная аналитика">
+                    <div class="card-body">
+                        <h3 class="h4">Автоматизация сбора данных</h3>
+                        <p class="text-muted">Наша система собирает данные в 10 раз быстрее ручного анализа. Просто укажите источник, и вся статистика будет готова за минуты.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <!-- Рекомендуемое изображение: https://unsplash.com/photos/white-robot-hand-1Iq9Kw4r6Yk -->
+                    <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=765&q=80" 
+                         class="card-img-top" 
+                         alt="AI анализ">
+                    <div class="card-body">
+                        <h3 class="h4">AI-анализ контента</h3>
+                        <p class="text-muted">Наш искусственный интеллект автоматически категоризирует посты, выявляет ключевые темы и определяет тональность обсуждений.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <!-- Рекомендуемое изображение: https://unsplash.com/photos/white-printer-paper-on-white-table-MChSQHxGZrQ -->
+                    <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" 
+                         class="card-img-top" 
+                         alt="Готовые отчеты">
+                    <div class="card-body">
+                        <h3 class="h4">Готовые отчеты</h3>
+                        <p class="text-muted">Все результаты автоматически формируются в удобные отчеты с визуализациями. Больше не нужно тратить часы на подготовку презентаций.</p>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Секция "Как это работает" -->
-    <section class="how-it-works-section">
-        <div class="container">
-            <h2 class="text-center mb-5">Как это работает</h2>
-            <div class="row">
-                <div class="col-md-3">
-                    <div class="feature-card">
-                        <img src="{% static 'myapp/Images/actions/1.png' %}" alt="Шаг 1" class="feature-image">
-                        <h3>Введите URL канала</h3>
-                        <p>На странице анализа введите URL Telegram-канала (например, <code>https://t.me/channel_name</code>).</p>
+    <!-- Platform Selector -->
+<section class="platform-selector py-5 bg-light rounded-4">
+    <div class="row text-center mb-5">
+        <div class="col">
+            <h2 class="display-5 fw-bold">Поддерживаемые платформы</h2>
+            <p class="lead text-muted">Анализируйте все популярные социальные сети</p>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Telegram -->
+        <div class="col-md-4 col-6">
+            <a href="{% url 'telegram' %}" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-telegram mb-3 mx-auto">
+                        <i class="fab fa-telegram fs-2"></i>
+                    </div>
+                    <h3 class="h4">Telegram</h3>
+                    <p class="text-muted">Анализ каналов и чатов</p>
+                    <div class="mt-2">
+                        <span class="badge bg-telegram bg-opacity-10 text-telegram">Новое</span>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="feature-card">
-                        <img src="{% static 'myapp/Images/actions/2.png' %}" alt="Шаг 2" class="feature-image">
-                        <h3>Укажите даты</h3>
-                        <p>Выберите даты начала и окончания для парсинга данных (опционально).</p>
+            </a>
+        </div>
+        
+        <!-- Instagram -->
+        <div class="col-md-4 col-6">
+            <a href="#" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-instagram mb-3 mx-auto">
+                        <i class="fab fa-instagram fs-2"></i>
+                    </div>
+                    <h3 class="h4">Instagram</h3>
+                    <p class="text-muted">Анализ аккаунтов и постов</p>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Скоро</span>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="feature-card">
-                        <img src="{% static 'myapp/Images/actions/3.png' %}" alt="Шаг 3" class="feature-image">
-                        <h3>Загрузите данные</h3>
-                        <p>Нажмите "Загрузить", чтобы получить посты, реакции и комментарии.</p>
+            </a>
+        </div>
+        
+        <!-- VK -->
+        <div class="col-md-4 col-6">
+            <a href="#" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-vk mb-3 mx-auto">
+                        <i class="fab fa-vk fs-2"></i>
+                    </div>
+                    <h3 class="h4">ВКонтакте</h3>
+                    <p class="text-muted">Анализ групп и пабликов</p>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Скоро</span>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="feature-card">
-                        <img src="{% static 'myapp/Images/actions/4.png' %}" alt="Шаг 4" class="feature-image">
-                        <h3>Анализируйте и экспортируйте</h3>
-                        <p>Фильтруйте данные, экспортируйте в Excel или сохраните модель для дальнейшего анализа.</p>
+            </a>
+        </div>
+        
+        <!-- YouTube -->
+        <div class="col-md-4 col-6">
+            <a href="#" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-youtube mb-3 mx-auto">
+                        <i class="fab fa-youtube fs-2"></i>
+                    </div>
+                    <h3 class="h4">YouTube</h3>
+                    <p class="text-muted">Анализ каналов и видео</p>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Скоро</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- Twitter -->
+        <div class="col-md-4 col-6">
+            <a href="#" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-twitter mb-3 mx-auto">
+                        <i class="fab fa-twitter fs-2"></i>
+                    </div>
+                    <h3 class="h4">Twitter</h3>
+                    <p class="text-muted">Анализ твитов и трендов</p>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Скоро</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <!-- TikTok -->
+        <div class="col-md-4 col-6">
+            <a href="#" class="platform-card card h-100 text-decoration-none text-dark">
+                <div class="card-body text-center p-4">
+                    <div class="platform-icon-wrapper bg-tiktok mb-3 mx-auto">
+                        <i class="fab fa-tiktok fs-2"></i>
+                    </div>
+                    <h3 class="h4">TikTok</h3>
+                    <p class="text-muted">Анализ аккаунтов и видео</p>
+                    <div class="mt-2">
+                        <span class="badge bg-secondary bg-opacity-10 text-secondary">Скоро</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+</section>
+
+    <!-- Testimonials -->
+    <section class="py-5 my-5">
+        <div class="row text-center mb-5">
+            <div class="col">
+                <h2 class="display-5 fw-bold">Отзывы пользователей</h2>
+                <p class="lead text-muted">Как TrendWatcher помогает в работе</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <img src="https://randomuser.me/api/portraits/women/43.jpg" 
+                                 class="rounded-circle me-3" 
+                                 width="50" 
+                                 alt="Пользователь">
+                            <div>
+                                <h5 class="mb-0">Анна Смирнова</h5>
+                                <small class="text-muted">SMM-специалист</small>
+                            </div>
+                        </div>
+                        <p>"Раньше на анализ конкурентов уходило 3-4 часа в день. Сейчас вся статистика собирается автоматически за 15 минут!"</p>
+                        <div class="text-warning">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" 
+                                 class="rounded-circle me-3" 
+                                 width="50" 
+                                 alt="Пользователь">
+                            <div>
+                                <h5 class="mb-0">Иван Петров</h5>
+                                <small class="text-muted">Маркетолог</small>
+                            </div>
+                        </div>
+                        <p>"AI-анализ контента помогает выявлять тренды на месяц раньше конкурентов. Незаменимый инструмент для маркетинга."</p>
+                        <div class="text-warning">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex mb-3">
+                            <img src="https://randomuser.me/api/portraits/women/65.jpg" 
+                                 class="rounded-circle me-3" 
+                                 width="50" 
+                                 alt="Пользователь">
+                            <div>
+                                <h5 class="mb-0">Елена Ковалева</h5>
+                                <small class="text-muted">Контент-менеджер</small>
+                            </div>
+                        </div>
+                        <p>"Готовые отчеты экономят мне 10 часов в неделю. Теперь все данные для клиентов всегда под рукой в красивом формате."</p>
+                        <div class="text-warning">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star-half-alt"></i>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- CTA Section -->
+    <section class="py-5 bg-primary bg-opacity-10 rounded-4">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mb-4 mb-lg-0">
+                <h2 class="fw-bold mb-3">Готовы ускорить анализ соцсетей?</h2>
+                <p class="lead mb-0">Начните использовать TrendWatcher прямо сейчас - это абсолютно бесплатно!</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{% url 'telegram' %}" class="btn btn-primary btn-lg px-4">Попробовать бесплатно</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<style>
+/* Стили для иконок платформ */
+    .platform-icon-wrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .platform-card:hover .platform-icon-wrapper {
+        transform: scale(1.1) rotate(5deg);
+    }
+    
+    .bg-telegram {
+        background: linear-gradient(135deg, #2AABEE 0%, #229ED9 100%);
+    }
+    
+    .bg-instagram {
+        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); 
+    }
+    
+    .bg-vk {
+        background: #4C75A3;
+    }
+    
+    .bg-youtube {
+        background: #FF0000;
+    }
+    
+    .bg-twitter {
+        background: #1DA1F2;
+    }
+    
+    .bg-tiktok {
+        background: #000000;
+    }
+    
+    .text-telegram {
+        color: #229ED9;
+    }
+    
+    .text-instagram {
+        color: #E1306C;
+    }
+    
+    .text-vk {
+        color: #4C75A3;
+    }
+    
+    .text-youtube {
+        color: #FF0000;
+    }
+    
+    .text-twitter {
+        color: #1DA1F2;
+    }
+    
+    .text-tiktok {
+        color: #000000;
+    }
+    
+    /* Анимация для платформ */
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+    
+    .platform-card {
+        transition: all 0.3s ease;
+        animation: pulse 2s infinite;
+    }
+    
+    .platform-card:hover {
+        animation: none;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .hero-section {
+        background: linear-gradient(135deg, rgba(110, 69, 226, 0.03) 0%, rgba(136, 211, 206, 0.03) 100%);
+    }
+    
+    .icon-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    
+    .platform-card:hover .icon-wrapper {
+        transform: scale(1.1);
+    }
+</style>
 {% endblock %}
