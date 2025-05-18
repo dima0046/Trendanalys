@@ -705,7 +705,7 @@ def export_to_excel(request):
 
     # Sheet 6: Top 3 Posts by Channel and Day (by VR Post)
     sheet6 = workbook.create_sheet('Top 3 Posts by Channel-Day')
-    sheet6.append(['Дата', 'Канал', 'ID Поста', 'Сообщение', 'VR Post'])
+    sheet6.append(['Дата', 'Канал', 'link','ID Поста', 'Сообщение', 'VR Post'])
     posts_by_channel_day = defaultdict(list)
     for item in parsed_data:
         date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
@@ -713,15 +713,16 @@ def export_to_excel(request):
         key = (date, channel)
         posts_by_channel_day[key].append({
             'post_id': item['post_id'],
+            'link': item['link'],
             'message': item['message'],
-            'vr_post': float(item['vr_post'])
+            'vr_post': float(item['vr_post'])            
         })
     
     for (date, channel), posts in posts_by_channel_day.items():
         # Sort by VR Post and take top 3
         top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
         for post in top_posts:
-            sheet6.append([date, channel, post['post_id'], post['message'], post['vr_post']])
+            sheet6.append([date, channel, post['post_id'],  post['link'],post['message'], post['vr_post']])
 
     # Save the workbook
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
