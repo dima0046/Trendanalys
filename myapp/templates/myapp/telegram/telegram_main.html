@@ -1,63 +1,121 @@
 {% extends 'myapp/base.html' %}
 {% load static %}
 
-{% block title %}Telegram Управление{% endblock %}
+{% block title %}Telegram Аналитика | TrendWatcher{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Добавляем вкладки -->
-    <ul class="nav nav-tabs">
-        <li class="nav-item">
-            <a class="nav-link active" href="#data-tab" data-bs-toggle="tab">Данные</a>
+<div class="container-fluid px-4 py-4">
+    <!-- Вкладки -->
+    <ul class="nav nav-pills mb-4" id="telegramTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="data-tab" data-bs-toggle="pill" data-bs-target="#data-tab-content" type="button" role="tab">
+                <i class="fas fa-database me-2"></i>Данные
+            </button>
         </li>
         {% if parsed_data %}
-        <li class="nav-item">
-            <a class="nav-link" href="#charts-tab" data-bs-toggle="tab" id="charts-tab-link">Графики</a>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="charts-tab" data-bs-toggle="pill" data-bs-target="#charts-tab-content" type="button" role="tab">
+                <i class="fas fa-chart-line me-2"></i>Графики
+            </button>
         </li>
         {% endif %}
     </ul>
 
-    <!-- Контейнер для вкладок -->
+    <!-- Контент вкладок -->
     <div class="tab-content">
-        <div class="tab-pane fade show active" id="data-tab">
+        <!-- Вкладка данных -->
+        <div class="tab-pane fade show active" id="data-tab-content" role="tabpanel">
             {% include 'myapp/telegram/data.html' %}
         </div>
-        <div class="tab-pane fade" id="charts-tab">
-            <div id="charts-content">
-                <p>Загрузка данных...</p>
+        
+        <!-- Вкладка графиков -->
+        <div class="tab-pane fade" id="charts-tab-content" role="tabpanel">
+            {% include 'myapp/telegram/charts.html' %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно деталей поста -->
+<div class="modal fade" id="postDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Детали поста</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Содержимое модального окна будет загружено динамически -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Закрыть
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Подключаем Bootstrap 5 JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    .nav-pills .nav-link.active {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .nav-pills .nav-link {
+        color: var(--dark);
+        font-weight: 500;
+    }
+    
+    #charts-content {
+        min-height: 500px;
+    }
+</style>
 
 <script>
-    $(document).ready(function() {
-        // Обработчик переключения вкладок
-        $('#charts-tab-link').on('shown.bs.tab', function(e) {
-            console.log("Switching to Charts tab, data_id:", '{{ data_id }}');
-            if ($('#charts-content').html().trim() === '<p>Загрузка данных...</p>') {
-                $.ajax({
-                    url: '/analytics_dashboard/',  // Проверьте, соответствует ли это вашему urls.py
-                    method: 'GET',
-                    data: {
-                        data_id: '{{ data_id }}'  // Передаем data_id из контекста
-                    },
-                    success: function(response) {
-                        console.log("AJAX success, response:", response);
-                        $('#charts-content').html(response);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX error:', status, error);
-                        console.log('Response text:', xhr.responseText);
-                        $('#charts-content').html('<p>Ошибка загрузки данных: ' + error + '</p>');
-                    }
-                });
+document.addEventListener('DOMContentLoaded', function() {
+    const chartsTab = document.querySelector('#charts-tab');
+    const chartsContent = document.querySelector('#charts-content');
+
+    chartsTab.addEventListener('shown.bs.tab', function() {
+        if (chartsContent.innerHTML.includes('Загрузка графиков')) {
+            const dataId = '{{ data_id }}'; // Получаем data_id из контекста
+            if (!dataId) {
+                chartsContent.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-exclamation-triangle fs-1 text-danger mb-3"></i>
+                        <h5 class="text-danger">Ошибка загрузки графиков</h5>
+                        <p>Идентификатор данных не указан</p>
+                    </div>
+                `;
+                return;
             }
-        });
+
+            fetch(`/analytics_dashboard/?data_id=${dataId}`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Ошибка сети: ' + response.statusText);
+                }
+                return response.text();
+            })
+            .then(data => {
+                chartsContent.innerHTML = data;
+            })
+            .catch(error => {
+                chartsContent.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-exclamation-triangle fs-1 text-danger mb-3"></i>
+                        <h5 class="text-danger">Ошибка загрузки графиков</h5>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            });
+        }
     });
+});
 </script>
 {% endblock %}
