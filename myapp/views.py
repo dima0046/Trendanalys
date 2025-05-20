@@ -615,7 +615,7 @@ def export_to_excel(request):
 
     # Sheet 1: Original Data
     sheet1 = workbook.active
-    sheet1.title = 'Original Data'
+    sheet1.title = 'Исходные данные'
     headers = ['Канал', 'ID Канала', 'ID Поста', 'Дата', 'Сообщение', 'Категория', 'Ссылка', 'Просмотров', 'Реакции', 'Пересылки', 'Комментарии']
     sheet1.append(headers)
 
@@ -647,7 +647,7 @@ def export_to_excel(request):
     }
     
     # Sheet 2: Publications by Day of Week
-    sheet2 = workbook.create_sheet('Publications by Day')
+    sheet2 = workbook.create_sheet('Количество публикаций')
     sheet2.append(['День недели', 'Количество публикаций'])
     publications_by_day = defaultdict(int)
     for item in parsed_data:
@@ -661,7 +661,7 @@ def export_to_excel(request):
         sheet2.append([day, count])
 
     # Sheet 3: Average ER Post by Day
-    sheet3 = workbook.create_sheet('Average ER Post by Day')
+    sheet3 = workbook.create_sheet('Ср. ERpost по дню')
     sheet3.append(['День недели', 'Средний ER Post'])
     er_by_day = defaultdict(list)
     for item in parsed_data:
@@ -674,7 +674,7 @@ def export_to_excel(request):
         sheet3.append([day, mean(ers)])
 
     # Sheet 4: Average VR Post by Day
-    sheet4 = workbook.create_sheet('Average VR Post by Day')
+    sheet4 = workbook.create_sheet('Ср. VRpost по дню')
     sheet4.append(['День недели', 'Средний VR Post'])
     vr_by_day = defaultdict(list)
     for item in parsed_data:
@@ -687,7 +687,7 @@ def export_to_excel(request):
         sheet4.append([day, mean(vrs)])
 
     # Sheet 5: Content Type Distribution
-    sheet5 = workbook.create_sheet('Content Type Distribution')
+    sheet5 = workbook.create_sheet('Тип контента')
     sheet5.append(['Тип контента', 'Процентное соотношение'])
     content_types = defaultdict(int)
     total_posts = len(parsed_data)
@@ -704,8 +704,8 @@ def export_to_excel(request):
         sheet5.append([content_type, percentage])
 
     # Sheet 6: Top 3 Posts by Channel and Day (by VR Post)
-    sheet6 = workbook.create_sheet('Top 3 Posts by Channel-Day')
-    sheet6.append(['Дата', 'Канал', 'link','ID Поста', 'Сообщение', 'VR Post'])
+    sheet6 = workbook.create_sheet('Топ-3 постов по дню')
+    sheet6.append(['Дата', 'Канал', 'link', 'ID Поста', 'Категория', 'Сообщение', 'VR Post'])
     posts_by_channel_day = defaultdict(list)
     for item in parsed_data:
         date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
@@ -714,6 +714,7 @@ def export_to_excel(request):
         posts_by_channel_day[key].append({
             'post_id': item['post_id'],
             'link': item['link'],
+            'category': item['category'],
             'message': item['message'],
             'vr_post': float(item['vr_post'])            
         })
@@ -722,7 +723,7 @@ def export_to_excel(request):
         # Sort by VR Post and take top 3
         top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
         for post in top_posts:
-            sheet6.append([date, channel, post['post_id'],  post['link'],post['message'], post['vr_post']])
+            sheet6.append([date, channel, post['post_id'],  post['link'], post['category'], post['message'], post['vr_post']])
 
     # Save the workbook
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
