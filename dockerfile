@@ -23,7 +23,12 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y net-tools
 
+# Копируем зависимости из builder
 COPY --from=builder /root/.local /root/.local
+
+# Добавляем /root/.local/bin в PATH, чтобы gunicorn был доступен
+ENV PATH="/root/.local/bin:$PATH"
+
 COPY . .
 
 RUN python manage.py collectstatic --noinput --settings=myproject.settings
