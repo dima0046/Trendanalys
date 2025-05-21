@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -7,14 +7,27 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN apt-get update \
+    && apt-get install -y net-tools \
+    && pip install --upgrade pip \
+    && pip install --user -r requirements.txt
 
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=myproject.settings
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y net-tools
+
+COPY --from=builder /root/.local /root/.local
 COPY . .
 
-RUN ls -R /app/myapp/static/
-RUN python manage.py collectstatic --settings=myproject.settings
+RUN python manage.py collectstatic --noinput --settings=myproject.settings
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "myproject.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "myproject.wsgi:application"]
