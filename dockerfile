@@ -11,6 +11,8 @@ RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
 COPY . .
+
+RUN ls -R /app/myapp/static/
 RUN python manage.py collectstatic --settings=myproject.settings
 
 EXPOSE 8000
