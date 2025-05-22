@@ -34,3 +34,8 @@ uvicorn==0.32.0
 
 # Обработка изображений
 Pillow==11.2.1
+
+# PostgreSQL
+psycopg2==2.9.10
+cryptg==0.5.0.post0
+cffi==1.17.1

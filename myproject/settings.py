@@ -52,8 +52,12 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'trendanalys',
+        'USER': 'postgres',
+        'PASSWORD': '1q2w3e4rQ',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -69,10 +73,10 @@ USE_TZ = True
 #STATICFILES_DIRS = [BASE_DIR / "static", BASE_DIR / "temp_data"]
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'myapp', 'static'),
-    os.path.join(BASE_DIR, 'myapp', 'temp_data'),
+    BASE_DIR / "myapp" / "static",
+    BASE_DIR / "temp_data",
 ]
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
