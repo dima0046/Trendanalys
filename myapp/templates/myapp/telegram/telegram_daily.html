@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Анализ Telegram-каналов (ежедневный парсинг)</h2>
+    
+    <!-- Форма для выбора периода -->
+    <form method="GET" action="{% url 'telegram_daily' %}">
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Показать данные</button>
+    </form>
+
+    <!-- Фильтры -->
+    <div class="mt-4">
+        <h4>Фильтры</h4>
+        <form method="GET" action="{% url 'telegram_daily' %}">
+            <input type="hidden" name="start_date" value="{{ start_date }}">
+            <input type="hidden" name="end_date" value="{{ end_date }}">
+            <div class="form-group">
+                <label>Каналы:</label>
+                <select name="filter" multiple class="form-control">
+                    <option value="all" {% if 'all' in filters %}selected{% endif %}>Все</option>
+                    {% for title in unique_titles %}
+                        <option value="{{ title }}" {% if title in filters %}selected{% endif %}>{{ title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Категории:</label>
+                <select name="category_filter" multiple class="form-control">
+                    <option value="all" {% if 'all' in category_filters %}selected{% endif %}>Все</option>
+                    {% for category in unique_categories_in_data %}
+                        <option value="{{ category }}" {% if category in category_filters %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary">Применить фильтры</button>
+        </form>
+    </div>
+
+    <!-- Таблица с данными -->
+    {% if parsed_data %}
+        <table class="table table-striped mt-4">
+            <thead>
+                <tr>
+                    <th><a href="?sort_by=channel&sort_direction={% if sort_by == 'channel' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Канал</a></th>
+                    <th><a href="?sort_by=postid&sort_direction={% if sort_by == 'postid' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">ID Поста</a></th>
+                    <th><a href="?sort_by=date&sort_direction={% if sort_by == 'date' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Дата</a></th>
+                    <th>Сообщение</th>
+                    <th><a href="?sort_by=category&sort_direction={% if sort_by == 'category' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Категория</a></th>
+                    <th>Просмотры</th>
+                    <th>Реакции</th>
+                    <th>Пересылки</th>
+                    <th>Комментарии</th>
+                    <th>ER Post</th>
+                    <th>ER View</th>
+                    <th>VR Post</th>
+                    <th>TR</th>
+                    <th>Тип</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in parsed_data %}
+                    <tr>
+                        <td>{{ post.channel.title }}</td>
+                        <td>{{ post.post_id }}</td>
+                        <td>{{ post.date|date:"Y-m-d H:i:s" }}</td>
+                        <td><a href="{{ post.link }}" target="_blank">{{ post.message|truncatechars:100 }}</a></td>
+                        <td>{{ post.category }}</td>
+                        <td>{{ post.views }}</td>
+                        <td>{{ post.reactions }}</td>
+                        <td>{{ post.forwards }}</td>
+                        <td>{{ post.comments_count }}</td>
+                        <td>{{ post.er_post }}</td>
+                        <td>{{ post.er_view }}</td>
+                        <td>{{ post.vr_post }}</td>
+                        <td>{{ post.tr }}</td>
+                        <td>{{ post.post_type }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Пагинация -->
+        {% if parsed_data.has_other_pages %}
+            <nav>
+                <ul class="pagination">
+                    {% if parsed_data.has_previous %}
+                        <li class="page-item"><a class="page-link" href="?page={{ parsed_data.previous_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">Предыдущая</a></li>
+                    {% endif %}
+                    {% for num in parsed_data.paginator.page_range %}
+                        <li class="page-item {% if parsed_data.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ num }}</a></li>
+                    {% endfor %}
+                    {% if parsed_data.has_next %}
+                        <li class="page-item"><a class="page-link" href="?page={{ parsed_data.next_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">Следующая</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <p class="mt-4">Нет данных для отображения.</p>
+    {% endif %}
+
+    <!-- Графики -->
+    <div class="mt-5">
+        <h4>Аналитика</h4>
+        <div id="publicationsChart"></div>
+        <div id="erChart"></div>
+        <div id="vrChart"></div>
+        <div id="contentTypesChart"></div>
+    </div>
+
+    <!-- Топ-3 постов -->
+    {% if top_posts %}
+        <h4 class="mt-4">Топ-3 постов по дням</h4>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Канал</th>
+                    <th>ID Поста</th>
+                    <th>Сообщение</th>
+                    <th>VR Post</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for post in top_posts %}
+                    <tr>
+                        <td>{{ post.date }}</td>
+                        <td>{{ post.channel }}</td>
+                        <td>{{ post.post_id }}</td>
+                        <td>{{ post.message|truncatechars:100 }}</td>
+                        <td>{{ post.vr_post }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<!-- Подключение Chart.js и скрипт для графиков -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const publicationsData = JSON.parse('{{ publications_by_day|safe }}');
+    const erData = JSON.parse('{{ er_by_day|safe }}');
+    const vrData = JSON.parse('{{ vr_by_day|safe }}');
+    const contentTypesData = JSON.parse('{{ content_types|safe }}');
+
+    new Chart(document.getElementById('publicationsChart'), {
+        type: 'bar',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Количество публикаций',
+                data: days.map(day => publicationsData[day] || 0),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('erChart'), {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Средний ER Post',
+                data: days.map(day => erData[day] || 0),
+                fill: false,
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        }
+    });
+
+    new Chart(document.getElementById('vrChart'), {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'Средний VR Post',
+                data: days.map(day => vrData[day] || 0),
+                fill: false,
+                borderColor: 'rgb(54, 162, 235)',
+                tension: 0.1
+            }]
+        }
+    });
+
+    new Chart(document.getElementById('contentTypesChart'), {
+        type: 'pie',
+        data: {
+            labels: Object.keys(contentTypesData),
+            datasets: [{
+                data: Object.values(contentTypesData),
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+            }]
+        }
+    });
+</script>
+{% endblock %}

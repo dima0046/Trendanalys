@@ -1003,3 +1003,128 @@ def export_model_view(request):
             return JsonResponse({'success': True, 'message': f'Model exported to {export_path}'})
         return JsonResponse({'success': False, 'error': 'Failed to export model'}, status=500)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@login_required
+async def telegram_daily_view(request):
+    filters = request.GET.getlist('filter')
+    category_filters = request.GET.getlist('category_filter')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    sort_by = request.GET.get('sort_by', 'date')
+    sort_direction = request.GET.get('sort_direction', 'desc')
+
+    form = TelegramForm(initial={
+        'start_date': start_date,
+        'end_date': end_date,
+    })
+
+    posts = TelegramPost.objects.all()
+    if start_date:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+        posts = posts.filter(date__gte=start_date)
+    if end_date:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+        posts = posts.filter(date__lte=end_date)
+    if filters and 'all' not in filters:
+        posts = posts.filter(channel__title__in=filters)
+    if category_filters and 'all' not in category_filters:
+        posts = posts.filter(category__in=category_filters)
+
+    reverse = sort_direction == 'desc'
+    if sort_by == 'channel':
+        posts = posts.order_by('-channel__title' if reverse else 'channel__title')
+    elif sort_by == 'postid':
+        posts = posts.order_by('-post_id' if reverse else 'post_id')
+    elif sort_by == 'date':
+        posts = posts.order_by('-date' if reverse else 'date')
+    elif sort_by == 'category':
+        posts = posts.order_by('-category' if reverse else 'category')
+
+    unique_titles = sorted(list(set(posts.values_list('channel__title', flat=True))))
+    unique_categories_in_data = sorted(list(set(posts.values_list('category', flat=True).exclude(category__isnull=True))))
+
+    paginator = Paginator(posts, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    days_map = {
+        'Понедельник': 'Monday',
+        'Вторник': 'Tuesday',
+        'Среда': 'Wednesday',
+        'Четверг': 'Thursday',
+        'Пятница': 'Friday',
+        'Суббота': 'Saturday',
+        'Воскресенье': 'Sunday'
+    }
+    publications_by_day = defaultdict(int)
+    er_by_day = defaultdict(list)
+    vr_by_day = defaultdict(list)
+    content_types = defaultdict(int)
+    top_posts_data = []
+
+    for post in posts:
+        date = post.date
+        day_name = date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                publications_by_day[ru_day] += 1
+                er_by_day[ru_day].append(float(post.er_post or 0))
+                vr_by_day[ru_day].append(float(post.vr_post or 0))
+        content_type = post.post_type.lower()
+        if content_type in ['image', 'video', 'text']:
+            content_types[content_type] += 1
+
+    er_by_day_data = {day: mean(ers) for day, ers in er_by_day.items() if ers}
+    vr_by_day_data = {day: mean(vrs) for day, vrs in vr_by_day.items() if vrs}
+    content_types_data = {content_type: (count / posts.count()) * 100 for content_type, count in content_types.items() if count > 0}
+
+    posts_by_channel_day = defaultdict(list)
+    for post in posts:
+        date = post.date.strftime('%Y-%m-%d')
+        channel = post.channel.title
+        key = (date, channel)
+        posts_by_channel_day[key].append({
+            'post_id': post.post_id,
+            'message': post.message,
+            'vr_post': float(post.vr_post)
+        })
+
+    for (date, channel), posts_list in posts_by_channel_day.items():
+        top_posts = sorted(posts_list, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            top_posts_data.append({
+                'date': date,
+                'channel': channel,
+                'post_id': post['post_id'],
+                'message': post['message'],
+                'vr_post': post['vr_post']
+            })
+
+    for day in days_map.keys():
+        if day not in publications_by_day:
+            publications_by_day[day] = 0
+        if day not in er_by_day_data:
+            er_by_day_data[day] = 0
+        if day not in vr_by_day_data:
+            vr_by_day_data[day] = 0
+
+    context = {
+        'form': form,
+        'parsed_data': page_obj,
+        'filters': filters,
+        'category_filters': category_filters,
+        'unique_titles': unique_titles,
+        'start_date': start_date,
+        'end_date': end_date,
+        'sort_by': sort_by,
+        'sort_direction': sort_direction,
+        'unique_categories': get_unique_categories(),
+        'unique_categories_in_data': unique_categories_in_data,
+        'publications_by_day': json.dumps(dict(publications_by_day)),
+        'er_by_day': json.dumps(er_by_day_data),
+        'vr_by_day': json.dumps(vr_by_day_data),
+        'content_types': json.dumps(content_types_data),
+        'top_posts': top_posts_data,
+    }
+    return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)

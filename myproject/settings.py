@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -105,5 +106,20 @@ LOGGING = {
     'root': {
         'handlers': ['console', 'file'],
         'level': 'INFO',
+    },
+}
+
+# myproject/settings.py (добавить в конец файла)
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Moscow'
+
+CELERY_BEAT_SCHEDULE = {
+    'run-daily-telegram-parser': {
+        'task': 'myapp.telegram.tasks.run_daily_parser',
+        'schedule': crontab(hour=0, minute=0),  # Запуск в полночь
     },
 }

@@ -1,0 +1,174 @@
+# myapp/telegram/tasks.py
+import logging
+import os
+from celery import shared_task
+from django.utils import timezone
+from datetime import datetime, timedelta
+from telethon import TelegramClient, functions, types
+from telethon import utils
+from asgiref.sync import sync_to_async
+from PIL import Image
+from .models import TelegramChannel, TelegramPost, ParserLog
+from .views import model, vectorizer, predict_category
+from dotenv import load_dotenv
+
+load_dotenv()
+api_id = os.getenv("API_ID")
+api_hash = os.getenv("API_HASH")
+
+logger = logging.getLogger(__name__)
+
+async def fetch_daily_telegram_data(channel, start_date, end_date):
+    client = TelegramClient('session_name_daily', api_id, api_hash)
+    try:
+        if not client.is_connected():
+            await client.connect()
+        if not await client.is_user_authorized():
+            logger.warning("Клиент Telegram не авторизован.")
+            return []
+
+        entity = await client.get_entity(channel.url)
+        channel.title = entity.title
+        await sync_to_async(channel.save)()
+
+        subscriber_count = 0
+        try:
+            full_channel = await client(functions.channels.GetFullChannelRequest(channel=entity))
+            subscriber_count = int(getattr(full_channel.full_chat, 'participants_count', 0))
+        except Exception as e:
+            logger.error(f"Ошибка получения количества подписчиков для {channel.url}: {str(e)}")
+
+        avatar_dir = os.path.join('temp_data', 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        avatar_filename = f"channel_{entity.id}.jpg"
+        avatar_full_path = os.path.join(avatar_dir, avatar_filename)
+        avatar_path = None
+        if hasattr(entity, 'photo') and entity.photo:
+            try:
+                photo = await client.download_profile_photo(entity, file=avatar_full_path)
+                if photo and os.path.exists(avatar_full_path):
+                    with Image.open(avatar_full_path) as img:
+                        img = img.resize((50, 50), Image.LANCZOS)
+                        img.save(avatar_full_path, 'JPEG', quality=85)
+                    avatar_path = f"avatars/{avatar_filename}"
+            except Exception as e:
+                logger.error(f"Ошибка загрузки аватара для {channel.url}: {str(e)}")
+
+        total_engagement = 0
+        total_comments = 0
+        post_count = 0
+        data = []
+        combined_message = None
+
+        async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
+            if end_date and post.date and post.date > end_date:
+                break
+
+            post_type = 'text'
+            if post.media:
+                if isinstance(post.media, types.MessageMediaPhoto):
+                    post_type = 'image'
+                elif isinstance(post.media, types.MessageMediaDocument) and post.media.document.mime_type.startswith('video'):
+                    post_type = 'video'
+
+            message_text = post.message if post.message else 'N/A'
+            if message_text == 'N/A' and (not post.grouped_id or (combined_message and combined_message.get('post_id') != post.id)):
+                if post.grouped_id and combined_message:
+                    combined_message['message'] += f"\n[{post_type.capitalize()}: {post.id}]"
+                    combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
+                continue
+
+            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message and combined_message and combined_message.get('message') != 'N/A':
+                combined_message['message'] += f"\n[Изображение: {post.media.photo.id}]"
+                combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
+                continue
+
+            comments_count = post.replies.replies if hasattr(post, 'replies') and post.replies else 0
+            reactions_count = sum(reaction.count for reaction in post.reactions.results) if hasattr(post, 'reactions') and post.reactions else 0
+            forwards_count = post.forwards if hasattr(post, 'forwards') else 0
+            views = post.views if hasattr(post, 'views') else 0
+
+            category = predict_category(message_text, model, vectorizer) if message_text != 'N/A' else 'N/A'
+
+            post_engagement = reactions_count + forwards_count + comments_count
+            total_engagement += post_engagement
+            total_comments += comments_count
+            post_count += 1
+
+            er_post = (post_engagement / subscriber_count * 100) if subscriber_count > 0 and post_engagement > 0 else 0
+            er_view = (post_engagement / views * 100) if views > 0 and post_engagement > 0 else 0
+            vr_post = (views / subscriber_count * 100) if subscriber_count > 0 and views > 0 else 0
+
+            post_data = {
+                'channel': channel,
+                'post_id': post.id,
+                'date': post.date,
+                'message': message_text,
+                'link': f"https://t.me/{entity.username}/{post.id}" if entity.username else f"https://t.me/c/{entity.id}/{post.id}",
+                'views': views,
+                'reactions': reactions_count,
+                'forwards': forwards_count,
+                'comments_count': comments_count,
+                'category': category,
+                'avatar': avatar_path,
+                'er_post': round(er_post, 2),
+                'er_view': round(er_view, 2),
+                'vr_post': round(vr_post, 2),
+                'post_type': post_type,
+                'subscribers': subscriber_count
+            }
+            data.append(post_data)
+
+            await sync_to_async(TelegramPost.objects.update_or_create)(
+                channel=channel,
+                post_id=post.id,
+                defaults={
+                    'date': post.date,
+                    'message': message_text,
+                    'link': post_data['link'],
+                    'views': views,
+                    'reactions': reactions_count,
+                    'forwards': forwards_count,
+                    'comments_count': comments_count,
+                    'category': category,
+                    'avatar': avatar_path,
+                    'er_post': round(er_post, 2),
+                    'er_view': round(er_view, 2),
+                    'vr_post': round(vr_post, 2),
+                    'post_type': post_type,
+                    'subscribers': subscriber_count
+                }
+            )
+
+        tr = (total_comments / subscriber_count / post_count * 100) if post_count > 0 and subscriber_count > 0 else 0
+        for item in data:
+            item['tr'] = round(tr, 2)
+        await sync_to_async(TelegramPost.objects.filter(channel=channel).update)(tr=round(tr, 2))
+
+        return data
+    except Exception as e:
+        logger.error(f"Ошибка получения данных для канала {channel.url}: {str(e)}")
+        raise
+    finally:
+        if client.is_connected():
+            await client.disconnect()
+
+@shared_task
+def run_daily_parser():
+    channels = TelegramChannel.objects.filter(is_active=True)
+    yesterday = timezone.now().date() - timedelta(days=1)
+    start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()))
+    end_date = timezone.make_aware(datetime.combine(yesterday, datetime.max.time()))
+
+    for channel in channels:
+        log = ParserLog.objects.create(channel=channel, status='RUNNING')
+        try:
+            data = asyncio.run(fetch_daily_telegram_data(channel, start_date, end_date))
+            log.status = 'SUCCESS'
+            log.posts_fetched = len(data)
+            log.message = f"Успешно собрано {len(data)} постов."
+        except Exception as e:
+            log.status = 'FAILED'
+            log.message = str(e)
+        log.end_time = timezone.now()
+        log.save()
