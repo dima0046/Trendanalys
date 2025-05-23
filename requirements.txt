@@ -6,7 +6,6 @@ django-widget-tweaks==1.5.0
 gunicorn
 whitenoise
 
-
 # Работа с Telegram API
 telethon==1.36.0
 
@@ -34,3 +33,10 @@ uvicorn==0.32.0
 
 # Обработка изображений
 Pillow==11.2.1
+
+# PostgreSQL
+# requirements.txt
+psycopg2-binary>=2.9.9
+joblib>=1.4.2
+celery>=5.4.0
+redis>=5.0.7

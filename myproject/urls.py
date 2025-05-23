@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-from myapp.views import telegram_view, index, export_to_excel, get_post_details, update_post_category, apply_changes, analytics_dashboard, export_model_view, custom_logout, custom_login, CustomPasswordChangeView, password_change_done
+from myapp.views import index, custom_logout, custom_login, CustomPasswordChangeView, password_change_done
+from myapp.telegram.views import telegram_view, export_to_excel, get_post_details, update_post_category, apply_changes, analytics_dashboard, export_model_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
