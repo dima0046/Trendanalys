@@ -43,11 +43,11 @@ import os
 from dotenv import load_dotenv
 
 # Machine learning imports
-from machine_learning.train_model import load_model
-from machine_learning.train_model import predict_category
-from machine_learning.train_model import update_model
-from machine_learning.train_model import get_unique_categories
-from machine_learning.train_model import export_model
+from myapp.telegram.machine_learning.train_model import load_model
+from myapp.telegram.machine_learning.train_model import predict_category
+from myapp.telegram.machine_learning.train_model import update_model
+from myapp.telegram.machine_learning.train_model import get_unique_categories
+from myapp.telegram.machine_learning.train_model import export_model
 
 # Image processing
 from PIL import Image
@@ -254,6 +254,12 @@ async def fetch_telegram_data(channel_url, start_date=None, end_date=None):
 @login_required
 async def telegram_view(request):
     cleanup_temp_data()
+    
+    global model, vectorizer
+    print(f"Model in telegram_view: {model}, Vectorizer: {vectorizer}")
+    if model is None or vectorizer is None:
+        logger.error("Model or vectorizer is None. Attempting to reload...")
+        model, vectorizer = load_model()
 
     filters = request.GET.getlist('filter')
     category_filters = request.GET.getlist('category_filter')

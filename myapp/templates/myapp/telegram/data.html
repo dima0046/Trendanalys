@@ -116,7 +116,7 @@
                 <h5 class="card-title"><i class="fas fa-download me-2"></i>Экспорт</h5>
             </div>
             <div class="card-body">
-                <form method="get" action="{% url 'export_to_excel' %}" class="d-grid gap-2">
+                <form method="get" action="{% url 'telegram:export_to_excel' %}" class="d-grid gap-2">
                     <input type="hidden" name="data_id" value="{{ data_id }}">
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-file-excel me-2"></i>Excel
@@ -787,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('changes', JSON.stringify(categoryChanges));
 
         try {
-            const response = await fetch('{% url "apply_changes" %}', {
+            const response = await fetch('{% url "telegram:apply_changes" %}', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken'),

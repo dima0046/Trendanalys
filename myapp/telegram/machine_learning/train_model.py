@@ -16,10 +16,11 @@ except LookupError:
 russian_stop_words = stopwords.words('russian')
 
 # Пути к файлам
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CATEGORIZED_DATA_PATH = os.path.join(BASE_DIR, 'machine_learning', 'categorized_2024.json')
-MODEL_PATH = os.path.join(BASE_DIR, 'machine_learning', 'telegram_category_model.joblib')
-VECTORIZER_PATH = os.path.join(BASE_DIR, 'machine_learning', 'telegram_category_vectorizer.joblib')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# путь до файла: myapp\telegram\machine_learning\categorized_2024.json
+CATEGORIZED_DATA_PATH = os.path.join(BASE_DIR, 'telegram', 'machine_learning', 'categorized_2024.json')
+MODEL_PATH = os.path.join(BASE_DIR, 'telegram', 'machine_learning', 'telegram_category_model.joblib')
+VECTORIZER_PATH = os.path.join(BASE_DIR, 'telegram', 'machine_learning', 'telegram_category_vectorizer.joblib')
 
 # Загрузка прокатегоризированной базы
 def load_categorized_data():

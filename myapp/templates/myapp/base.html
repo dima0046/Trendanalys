@@ -148,7 +148,7 @@
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/telegram/' %}active{% endif %}" href="{% url 'telegram' %}">
+                        <a class="nav-link {% if request.path == '/telegram/' %}active{% endif %}" href="{% url 'telegram:telegram' %}">
                             <i class="fab fa-telegram me-1"></i> Telegram
                         </a>
                     </li>
@@ -225,7 +225,7 @@
                 <div class="col-lg-2 col-md-4 mb-4 mb-md-0">
                     <h3 class="footer-title">Платформы</h3>
                     <ul class="footer-links">
-                        <li><a href="{% url 'telegram' %}">Telegram</a></li>
+                        <li><a href="{% url 'telegram:telegram' %}">Telegram</a></li>
                         <li><a href="#">ВКонтакте</a></li>
                         <li><a href="#">Instagram</a></li>
                         <li><a href="#">YouTube</a></li>
