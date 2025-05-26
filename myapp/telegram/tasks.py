@@ -5,7 +5,6 @@ from celery import shared_task
 from django.utils import timezone
 from datetime import datetime, timedelta
 from telethon import TelegramClient, functions, types
-from telethon import utils
 from asgiref.sync import sync_to_async
 from PIL import Image
 from .models import TelegramChannel, TelegramPost, ParserLog
@@ -19,13 +18,21 @@ api_hash = os.getenv("API_HASH")
 logger = logging.getLogger(__name__)
 
 async def fetch_daily_telegram_data(channel, start_date, end_date):
-    client = TelegramClient('session_name_daily', api_id, api_hash)
+    print(f"API ID: {api_id}, API HASH: {api_hash}")
+    logger.info(f"API ID: {api_id}, API HASH: {api_hash}")
+    client = TelegramClient('session_name', api_id, api_hash)  # Изменено на session_name
     try:
+        print(f"Подключение к Telegram для {channel.url}")
         if not client.is_connected():
             await client.connect()
+            print("Клиент подключен")
         if not await client.is_user_authorized():
-            logger.warning("Клиент Telegram не авторизован.")
-            return []
+            print(f"Клиент не авторизован, запрашивается авторизация")
+            phone = input("Введите номер телефона: ")
+            await client.start(phone=phone)
+            print("Авторизация завершена")
+        else:
+            print("Клиент уже авторизован")
 
         entity = await client.get_entity(channel.url)
         channel.title = entity.title
@@ -37,6 +44,7 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
             subscriber_count = int(getattr(full_channel.full_chat, 'participants_count', 0))
         except Exception as e:
             logger.error(f"Ошибка получения количества подписчиков для {channel.url}: {str(e)}")
+            print(f"Ошибка подписчиков: {str(e)}")
 
         avatar_dir = os.path.join('temp_data', 'avatars')
         os.makedirs(avatar_dir, exist_ok=True)
@@ -53,6 +61,7 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
                     avatar_path = f"avatars/{avatar_filename}"
             except Exception as e:
                 logger.error(f"Ошибка загрузки аватара для {channel.url}: {str(e)}")
+                print(f"Ошибка аватара: {str(e)}")
 
         total_engagement = 0
         total_comments = 0
@@ -60,6 +69,7 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         data = []
         combined_message = None
 
+        print(f"Начало парсинга постов для {channel.url}")
         async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
             if end_date and post.date and post.date > end_date:
                 break
@@ -88,7 +98,12 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
             forwards_count = post.forwards if hasattr(post, 'forwards') else 0
             views = post.views if hasattr(post, 'views') else 0
 
-            category = predict_category(message_text, model, vectorizer) if message_text != 'N/A' else 'N/A'
+            try:
+                category = predict_category(message_text, model, vectorizer) if message_text != 'N/A' else 'N/A'
+            except Exception as e:
+                logger.error(f"Ошибка классификации для поста {post.id}: {str(e)}")
+                print(f"Ошибка классификации: {str(e)}")
+                category = 'N/A'
 
             post_engagement = reactions_count + forwards_count + comments_count
             total_engagement += post_engagement
@@ -139,36 +154,49 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
                     'subscribers': subscriber_count
                 }
             )
+            print(f"Сохранен пост {post.id}")
 
         tr = (total_comments / subscriber_count / post_count * 100) if post_count > 0 and subscriber_count > 0 else 0
         for item in data:
             item['tr'] = round(tr, 2)
         await sync_to_async(TelegramPost.objects.filter(channel=channel).update)(tr=round(tr, 2))
 
+        print(f"Парсинг завершен, собрано {len(data)} постов")
         return data
     except Exception as e:
         logger.error(f"Ошибка получения данных для канала {channel.url}: {str(e)}")
+        print(f"Ошибка: {str(e)}")
         raise
     finally:
         if client.is_connected():
             await client.disconnect()
+            print("Клиент отключен")
 
-@shared_task
-def run_daily_parser():
-    channels = TelegramChannel.objects.filter(is_active=True)
+async def run_daily_parser_manual():
+    print("Запуск run_daily_parser_manual")
+    channels = await sync_to_async(lambda: list(TelegramChannel.objects.filter(is_active=True)))()
+    print(f"Количество активных каналов: {len(channels)}")
     yesterday = timezone.now().date() - timedelta(days=1)
     start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()))
-    end_date = timezone.make_aware(datetime.combine(yesterday, datetime.max.time()))
+    end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    print(f"Парсинг за период: {start_date} - {end_date}")
 
     for channel in channels:
-        log = ParserLog.objects.create(channel=channel, status='RUNNING')
+        print(f"Обработка канала: {channel.url}")
+        log = await sync_to_async(ParserLog.objects.create)(channel=channel, status='active')
         try:
-            data = asyncio.run(fetch_daily_telegram_data(channel, start_date, end_date))
+            data = await fetch_daily_telegram_data(channel, start_date, end_date)
             log.status = 'SUCCESS'
             log.posts_fetched = len(data)
-            log.message = f"Успешно собрано {len(data)} постов."
+            log.message = f"Обработка успешно завершена, получено {len(data)} постов."
+            print(f"Собрано {len(data)} постов для {channel.url}")
         except Exception as e:
             log.status = 'FAILED'
             log.message = str(e)
+            print(f"Ошибка для {channel.url}: {str(e)}")
         log.end_time = timezone.now()
-        log.save()
+        await sync_to_async(log.save)()
+
+@shared_task
+def run_daily_parser():
+    return asyncio.run(run_daily_parser_manual())

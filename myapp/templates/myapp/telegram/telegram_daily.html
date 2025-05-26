@@ -1,209 +1,842 @@
-{% extends "base.html" %}
+{% extends 'myapp/base.html' %}
 {% load static %}
 
+{% block title %}Telegram Аналитика | TrendWatcher{% endblock %}
+
 {% block content %}
-<div class="container mt-5">
-    <h2>Анализ Telegram-каналов (ежедневный парсинг)</h2>
-    
-    <!-- Форма для выбора периода -->
-    <form method="GET" action="{% url 'telegram_daily' %}">
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Показать данные</button>
-    </form>
-
-    <!-- Фильтры -->
-    <div class="mt-4">
-        <h4>Фильтры</h4>
-        <form method="GET" action="{% url 'telegram_daily' %}">
-            <input type="hidden" name="start_date" value="{{ start_date }}">
-            <input type="hidden" name="end_date" value="{{ end_date }}">
-            <div class="form-group">
-                <label>Каналы:</label>
-                <select name="filter" multiple class="form-control">
-                    <option value="all" {% if 'all' in filters %}selected{% endif %}>Все</option>
-                    {% for title in unique_titles %}
-                        <option value="{{ title }}" {% if title in filters %}selected{% endif %}>{{ title }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Категории:</label>
-                <select name="category_filter" multiple class="form-control">
-                    <option value="all" {% if 'all' in category_filters %}selected{% endif %}>Все</option>
-                    {% for category in unique_categories_in_data %}
-                        <option value="{{ category }}" {% if category in category_filters %}selected{% endif %}>{{ category }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <button type="submit" class="btn btn-secondary">Применить фильтры</button>
-        </form>
-    </div>
-
-    <!-- Таблица с данными -->
-    {% if parsed_data %}
-        <table class="table table-striped mt-4">
-            <thead>
-                <tr>
-                    <th><a href="?sort_by=channel&sort_direction={% if sort_by == 'channel' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Канал</a></th>
-                    <th><a href="?sort_by=postid&sort_direction={% if sort_by == 'postid' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">ID Поста</a></th>
-                    <th><a href="?sort_by=date&sort_direction={% if sort_by == 'date' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Дата</a></th>
-                    <th>Сообщение</th>
-                    <th><a href="?sort_by=category&sort_direction={% if sort_by == 'category' and sort_direction == 'asc' %}desc{% else %}asc{% endif %}">Категория</a></th>
-                    <th>Просмотры</th>
-                    <th>Реакции</th>
-                    <th>Пересылки</th>
-                    <th>Комментарии</th>
-                    <th>ER Post</th>
-                    <th>ER View</th>
-                    <th>VR Post</th>
-                    <th>TR</th>
-                    <th>Тип</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for post in parsed_data %}
-                    <tr>
-                        <td>{{ post.channel.title }}</td>
-                        <td>{{ post.post_id }}</td>
-                        <td>{{ post.date|date:"Y-m-d H:i:s" }}</td>
-                        <td><a href="{{ post.link }}" target="_blank">{{ post.message|truncatechars:100 }}</a></td>
-                        <td>{{ post.category }}</td>
-                        <td>{{ post.views }}</td>
-                        <td>{{ post.reactions }}</td>
-                        <td>{{ post.forwards }}</td>
-                        <td>{{ post.comments_count }}</td>
-                        <td>{{ post.er_post }}</td>
-                        <td>{{ post.er_view }}</td>
-                        <td>{{ post.vr_post }}</td>
-                        <td>{{ post.tr }}</td>
-                        <td>{{ post.post_type }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- Пагинация -->
-        {% if parsed_data.has_other_pages %}
-            <nav>
-                <ul class="pagination">
-                    {% if parsed_data.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ parsed_data.previous_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">Предыдущая</a></li>
-                    {% endif %}
-                    {% for num in parsed_data.paginator.page_range %}
-                        <li class="page-item {% if parsed_data.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ num }}</a></li>
-                    {% endfor %}
-                    {% if parsed_data.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ parsed_data.next_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">Следующая</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
+<div class="container-fluid px-4 py-4">
+    <!-- Вкладки -->
+    <ul class="nav nav-pills mb-4" id="telegramTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="data-tab" data-bs-toggle="pill" data-bs-target="#data-tab-content" type="button" role="tab">
+                <i class="fas fa-database me-2"></i>Данные
+            </button>
+        </li>
+        {% if parsed_data %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="charts-tab" data-bs-toggle="pill" data-bs-target="#charts-tab-content" type="button" role="tab">
+                <i class="fas fa-chart-line me-2"></i>Графики
+            </button>
+        </li>
         {% endif %}
-    {% else %}
-        <p class="mt-4">Нет данных для отображения.</p>
-    {% endif %}
+    </ul>
 
-    <!-- Графики -->
-    <div class="mt-5">
-        <h4>Аналитика</h4>
-        <div id="publicationsChart"></div>
-        <div id="erChart"></div>
-        <div id="vrChart"></div>
-        <div id="contentTypesChart"></div>
+    <!-- Контент вкладок -->
+    <div class="tab-content">
+        <!-- Вкладка данных -->
+        <div class="tab-pane fade show active" id="data-tab-content" role="tabpanel">
+            <div class="row">
+                <!-- Блок фильтров -->
+                <div class="col-lg-3">
+                    <!-- Форма загрузки данных -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white border-0">
+                            <h5 class="card-title"><i class="fas fa-cloud-download-alt me-2"></i>Загрузка данных</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" id="telegram-form" class="needs-validation" novalidate>
+                                {{ form.as_p }}
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-download me-2"></i>Показать
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- Фильтры -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white border-0 pb-0">
+                            <h5 class="card-title"><i class="fas fa-filter me-2"></i>Фильтры</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" id="filters-form" class="needs-validation" novalidate>
+                                <input type="hidden" name="start_date" value="{{ start_date }}">
+                                <input type="hidden" name="end_date" value="{{ end_date }}">
+                                {% if unique_titles %}
+                                <div class="mb-4">
+                                    <h6 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>Каналы</h6>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="all" id="filter-all" name="filter" {% if 'all' in filters or not filters %}checked{% endif %}>
+                                        <label class="form-check-label" for="filter-all">Все каналы</label>
+                                    </div>
+                                    <div class="filter-scroll" style="max-height: 200px; overflow-y: auto;">
+                                        {% for title in unique_titles %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" value="{{ title }}" id="filter-{{ forloop.counter }}" name="filter" {% if title in filters %}checked{% endif %}>
+                                            <label class="form-check-label" for="filter-{{ forloop.counter }}">{{ title }}</label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if parsed_data %}
+                                <div class="mb-4">
+                                    <h6 class="fw-bold mb-3"><i class="fas fa-tags me-2"></i>Категории</h6>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" value="all" id="category-filter-all" name="category_filter" {% if 'all' in category_filters or not category_filters %}checked{% endif %}>
+                                        <label class="form-check-label" for="category-filter-all">Все категории</label>
+                                    </div>
+                                    <div class="filter-scroll" style="max-height: 200px; overflow-y: auto;">
+                                        {% for category in unique_categories_in_data %}
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" value="{{ category }}" id="category-filter-{{ forloop.counter }}" name="category_filter" {% if category in category_filters %}checked{% endif %}>
+                                            <label class="form-check-label" for="category-filter-{{ forloop.counter }}">{{ category }}</label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-check-circle me-2"></i>Применить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- Экспорт -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-0 pb-0">
+                            <h5 class="card-title"><i class="fas fa-download me-2"></i>Экспорт</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" action="{% url 'telegram:export_to_excel' %}" class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-file-excel me-2"></i>Excel
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- Основная таблица -->
+                <div class="col-lg-9">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>Результаты анализа</h5>
+                            <div class="d-flex gap-2">
+                                <button id="reset-changes-btn" class="btn btn-sm btn-outline-danger" style="display: none;">
+                                    <i class="fas fa-undo me-1"></i>Отменить
+                                </button>
+                                <button id="apply-changes-btn" class="btn btn-sm btn-primary" disabled>
+                                    <i class="fas fa-save me-1"></i>Применить
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="50px" class="text-center">Канал</th>
+                                            <th>Пост</th>
+                                            <th width="150px">Категория</th>
+                                            <th width="80px" class="text-center" title="Просмотры"><i class="far fa-eye"></i></th>
+                                            <th width="80px" class="text-center" title="Репосты"><i class="fas fa-share"></i></th>
+                                            <th width="80px" class="text-center" title="Реакции"><i class="fas fa-poo"></i></th>
+                                            <th width="80px" class="text-center" title="Комментарии"><i class="fas fa-comment"></i></th>
+                                            <th width="80px" class="text-center" title="ER (пост)">ERpost</th>
+                                            <th width="80px" class="text-center" title="ER (просмотры)">ERview</th>
+                                            <th width="80px" class="text-center" title="VR (пост)">VRpost</th>
+                                            <th width="80px" class="text-center">Тип</th>
+                                            <th width="50px" class="text-center">Детали</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if parsed_data %}
+                                            {% for item in parsed_data %}
+                                            <tr class="post-row {% if item.highlight %}table-primary{% endif %}" 
+                                                data-post-id="{{ item.post_id }}" 
+                                                data-channel-id="{{ item.channel.id }}"
+                                                data-views="{{ item.views }}" 
+                                                data-forwards="{{ item.forwards }}" 
+                                                data-reactions="{{ item.reactions }}" 
+                                                data-comments="{{ item.comments_count }}" 
+                                                data-original-category="{{ item.category }}"
+                                                data-er-post="{{ item.er_post }}" 
+                                                data-er-view="{{ item.er_view }}" 
+                                                data-vr-post="{{ item.vr_post }}">
+                                                <td class="text-center">
+                                                    <img class="channel-avatar rounded-circle border" 
+                                                         src="{% if item.channel.avatar %}/static/{{ item.channel.avatar }}{% else %}{% static 'images/default_avatar.jpg' %}{% endif %}" 
+                                                         alt="{{ item.channel.title }}" 
+                                                         width="40" 
+                                                         height="40"
+                                                         title="{{ item.channel.title }}">
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex flex-column">
+                                                        <small class="text-muted mb-1">
+                                                            <a href="{{ item.link }}" class="text-decoration-none" target="_blank">#{{ item.post_id }}</a> • {{ item.date|date:"Y-m-d H:i:s" }}
+                                                        </small>
+                                                        <div class="post-text-container">
+                                                            <p class="post-text-short mb-0">{{ item.message|truncatechars:100 }}</p>
+                                                            {% if item.message|length > 100 %}
+                                                            <p class="post-text-full mb-0 d-none">{{ item.message }}</p>
+                                                            <a href="#" class="read-more small text-primary" data-expanded="false">читать далее</a>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <select class="form-select form-select-sm category-select" 
+                                                            data-post-id="{{ item.post_id }}">
+                                                        {% for category in unique_categories_in_data %}
+                                                        <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td class="text-center">{{ item.views }}</td>
+                                                <td class="text-center">{{ item.forwards }}</td>
+                                                <td class="text-center">{{ item.reactions }}</td>
+                                                <td class="text-center">{{ item.comments_count }}</td>
+                                                <td class="text-center">{{ item.er_post }}</td>
+                                                <td class="text-center">{{ item.er_view }}</td>
+                                                <td class="text-center">{{ item.vr_post }}</td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-{% if item.post_type == 'message' %}info{% else %}secondary{% endif %}">
+                                                        {{ item.post_type }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <button class="btn btn-sm btn-outline-primary details-btn" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#postDetailsModal" 
+                                                            data-post-id="{{ item.post_id }}" 
+                                                            data-channel-id="{{ item.channel.id }}">
+                                                        <i class="fas fa-info-circle"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="12" class="text-center py-4">
+                                                    <div class="d-flex flex-column align-items-center">
+                                                        <i class="fas fa-inbox fs-1 text-muted mb-3"></i>
+                                                        <h5 class="text-muted">Данные отсутствуют</h5>
+                                                        <p class="text-muted">Выберите период для анализа</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if parsed_data.has_other_pages %}
+                            <div class="card-footer bg-white border-0">
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination justify-content-center mb-0">
+                                        {% if parsed_data.has_previous %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page=1&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="First">
+                                                    <i class="fas fa-angle-double-left"></i>
+                                                </a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ parsed_data.previous_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Previous">
+                                                    <i class="fas fa-angle-left"></i>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                        {% for num in parsed_data.paginator.page_range %}
+                                            {% if parsed_data.number == num %}
+                                                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                            {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="?page={{ num }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ num }}</a>
+                                                </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if parsed_data.has_next %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ parsed_data.next_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Next">
+                                                    <i class="fas fa-angle-right"></i>
+                                                </a>
+                                            </li>
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ parsed_data.paginator.num_pages }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Last">
+                                                    <i class="fas fa-angle-double-right"></i>
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </nav>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Вкладка графиков -->
+        <div class="tab-pane fade" id="charts-tab-content" role="tabpanel">
+            {% include 'myapp/telegram/charts.html' %}
+        </div>
     </div>
-
-    <!-- Топ-3 постов -->
-    {% if top_posts %}
-        <h4 class="mt-4">Топ-3 постов по дням</h4>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Дата</th>
-                    <th>Канал</th>
-                    <th>ID Поста</th>
-                    <th>Сообщение</th>
-                    <th>VR Post</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for post in top_posts %}
-                    <tr>
-                        <td>{{ post.date }}</td>
-                        <td>{{ post.channel }}</td>
-                        <td>{{ post.post_id }}</td>
-                        <td>{{ post.message|truncatechars:100 }}</td>
-                        <td>{{ post.vr_post }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
 </div>
 
-<!-- Подключение Chart.js и скрипт для графиков -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-    const publicationsData = JSON.parse('{{ publications_by_day|safe }}');
-    const erData = JSON.parse('{{ er_by_day|safe }}');
-    const vrData = JSON.parse('{{ vr_by_day|safe }}');
-    const contentTypesData = JSON.parse('{{ content_types|safe }}');
+<!-- Модальное окно деталей поста -->
+<div class="modal fade" id="postDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Детали поста</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Содержимое модального окна будет загружено динамически -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    new Chart(document.getElementById('publicationsChart'), {
-        type: 'bar',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Количество публикаций',
-                data: days.map(day => publicationsData[day] || 0),
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
+<!-- Стили из data.html -->
+<style>
+    .channel-avatar {
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .post-text-container {
+        position: relative;
+    }
+    .read-more {
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        border-top: none;
+    }
+    .table td {
+        vertical-align: middle;
+        padding: 0.75rem 1rem;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(110, 69, 226, 0.05);
+    }
+    .active-post {
+        background-color: rgba(110, 69, 226, 0.1) !important;
+        border-left: 3px solid var(--primary);
+    }
+    .modified {
+        background-color: rgba(255, 193, 7, 0.1) !important;
+    }
+    .filter-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+    .filter-scroll::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    .filter-scroll::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 10px;
+    }
+    .filter-scroll::-webkit-scrollbar-thumb:hover {
+        background: #aaa;
+    }
+    @media (max-width: 992px) {
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .table th, .table td {
+            white-space: nowrap;
+        }
+    }
+    .nav-pills .nav-link.active {
+        background-color: var(--primary);
+        color: white;
+    }
+    .nav-pills .nav-link {
+        color: var(--dark);
+        font-weight: 500;
+    }
+    #charts-content {
+        min-height: 500px;
+    }
+</style>
+
+<!-- Подключаем Bootstrap 5 JS и Font Awesome -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+
+<!-- JavaScript из data.html -->
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const postRows = document.querySelectorAll('.post-row');
+    const detailButtons = document.querySelectorAll('.details-btn');
+    const postDetailsModal = new bootstrap.Modal(document.getElementById('postDetailsModal'));
+    const modalBody = document.querySelector('#postDetailsModal .modal-body');
+    const applyChangesBtn = document.getElementById('apply-changes-btn');
+    const resetChangesBtn = document.getElementById('reset-changes-btn');
+
+    // Начальная структура модального окна
+    modalBody.innerHTML = `
+        <div class="mb-3">
+            <h6>Текст поста</h6>
+            <p id="detail-post-text" class="border p-2 rounded">Текст поста отсутствует</p>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <p><strong>Просмотры:</strong> <span id="detail-views">N/A</span></p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Репосты:</strong> <span id="detail-forwards">N/A</span></p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Реакции:</strong> <span id="detail-reactions">0</span></p>
+            </div>
+            <div class="col-md-3">
+                <p><strong>Комментарии:</strong> <span id="detail-comments">0</span></p>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <p><strong>ER (пост):</strong> <span id="detail-er-post">0</span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>ER (просмотры):</strong> <span id="detail-er-view">0</span></p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>VR (пост):</strong> <span id="detail-vr-post">0</span></p>
+            </div>
+        </div>
+        <h6>Реакции</h6>
+        <ul id="reactions-list" class="list-group mb-3"></ul>
+        <div id="reactions-toggle" class="mb-3"></div>
+        <h6>Комментарии</h6>
+        <ul id="comments-list" class="list-group mb-3"></ul>
+        <nav id="comments-pagination" aria-label="Comments navigation">
+            <ul class="pagination justify-content-center"></ul>
+        </nav>
+    `;
+
+    const reactionsList = document.getElementById('reactions-list');
+    const reactionsToggle = document.getElementById('reactions-toggle');
+    const commentsList = document.getElementById('comments-list');
+    const commentsPagination = document.getElementById('comments-pagination');
+    const detailViews = document.getElementById('detail-views');
+    const detailForwards = document.getElementById('detail-forwards');
+    const detailReactions = document.getElementById('detail-reactions');
+    const detailComments = document.getElementById('detail-comments');
+    const detailErPost = document.getElementById('detail-er-post');
+    const detailErView = document.getElementById('detail-er-view');
+    const detailVrPost = document.getElementById('detail-vr-post');
+
+    let currentPostId = null;
+    let currentChannelId = null;
+    let currentPage = 1;
+    const commentsPerPage = 10;
+    let hasChanges = false;
+    let categoryChanges = JSON.parse(localStorage.getItem('categoryChanges')) || {};
+
+    function checkForChanges() {
+        hasChanges = false;
+        postRows.forEach(row => {
+            const postId = row.getAttribute('data-post-id');
+            const originalCategory = row.getAttribute('data-original-category');
+            const currentCategory = categoryChanges[postId] || row.querySelector('.category-select').value;
+            if (currentCategory && currentCategory !== originalCategory) {
+                hasChanges = true;
+            }
+        });
+        applyChangesBtn.disabled = !hasChanges;
+        resetChangesBtn.style.display = hasChanges ? 'block' : 'none';
+    }
+
+    checkForChanges();
+
+    async function loadPostDetails(postId, channelId, page = 1) {
+        currentPostId = postId;
+        currentChannelId = channelId;
+        currentPage = page;
+
+        try {
+            const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            const row = document.querySelector(`.post-row[data-post-id="${postId}"]`);
+            document.getElementById('detail-post-text').textContent = row.querySelector('.post-text-short').textContent.trim() || 'Текст поста отсутствует';
+            detailViews.textContent = row.getAttribute('data-views') || 'N/A';
+            detailForwards.textContent = row.getAttribute('data-forwards') || 'N/A';
+            detailReactions.textContent = row.getAttribute('data-reactions') || '0';
+            detailComments.textContent = row.getAttribute('data-comments') || '0';
+            detailErPost.textContent = row.getAttribute('data-er-post') || '0';
+            detailErView.textContent = row.getAttribute('data-er-view') || '0';
+            detailVrPost.textContent = row.getAttribute('data-vr-post') || '0';
+
+            reactionsList.innerHTML = '';
+            reactionsToggle.innerHTML = '';
+            commentsList.innerHTML = '';
+            const paginationUl = commentsPagination.querySelector('ul');
+            paginationUl.innerHTML = '';
+
+            if (data.reactions && data.reactions.length > 0) {
+                const visibleReactions = data.reactions.slice(0, 3);
+                const hiddenReactions = data.reactions.slice(3);
+
+                visibleReactions.forEach(reaction => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item reaction-item';
+                    const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
+                    li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                    reactionsList.appendChild(li);
+                });
+
+                if (hiddenReactions.length > 0) {
+                    const hiddenContainer = document.createElement('div');
+                    hiddenContainer.className = 'hidden-reactions';
+                    hiddenContainer.style.display = 'none';
+                    hiddenReactions.forEach(reaction => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item reaction-item';
+                        const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
+                        li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                    });
+                    reactionsList.appendChild(hiddenContainer);
+
+                    const toggleLink = document.createElement('a');
+                    toggleLink.href = '#';
+                    toggleLink.className = 'toggle-reactions';
+                    toggleLink.textContent = 'развернуть';
+                    reactionsToggle.appendChild(toggleLink);
+
+                    reactionsToggle.style.display = 'block';
+                    toggleLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (hiddenContainer.style.display === 'none') {
+                            hiddenContainer.style.display = 'block';
+                            this.textContent = 'свернуть';
+                        } else {
+                            hiddenContainer.style.display = 'none';
+                            this.textContent = 'развернуть';
+                        }
+                    });
+                } else {
+                    reactionsToggle.style.display = 'none';
+                }
+            } else {
+                reactionsList.innerHTML = '<li class="list-group-item">Нет реакций</li>';
+                reactionsToggle.style.display = 'none';
+            }
+
+            if (data.total_comments > 0 && data.comments && data.comments.length > 0) {
+                data.comments.forEach(comment => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+
+                    const message = comment.message || '[Без текста]';
+                    const isLongMessage = message.length > 100;
+                    const shortMessage = isLongMessage ? message.slice(0, 100) + '...' : message;
+                    const fullMessage = message;
+
+                    const messageContainer = document.createElement('div');
+                    messageContainer.className = 'comment-message';
+
+                    const shortText = document.createElement('p');
+                    shortText.className = 'mb-1 short-comment';
+                    shortText.textContent = shortMessage;
+                    messageContainer.appendChild(shortText);
+
+                    const fullText = document.createElement('p');
+                    fullText.className = 'mb-1 full-comment';
+                    fullText.textContent = fullMessage;
+                    fullText.classList.add('d-none');
+                    messageContainer.appendChild(fullText);
+
+                    if (isLongMessage) {
+                        const toggleLink = document.createElement('a');
+                        toggleLink.href = '#';
+                        toggleLink.className = 'toggle-comment';
+                        toggleLink.textContent = 'читать далее';
+                        messageContainer.appendChild(toggleLink);
+
+                        toggleLink.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            if (shortText.classList.contains('d-none')) {
+                                shortText.classList.remove('d-none');
+                                fullText.classList.add('d-none');
+                                this.textContent = 'читать далее';
+                            } else {
+                                shortText.classList.add('d-none');
+                                fullText.classList.remove('d-none');
+                                this.textContent = 'свернуть';
+                            }
+                        });
+                    }
+
+                    li.appendChild(messageContainer);
+
+                    const meta = document.createElement('small');
+                    meta.className = 'text-muted';
+                    meta.innerHTML = `
+                        Автор: ${comment.author || 'Аноним'} | 
+                        Дата: ${comment.date} | 
+                        Репостов: ${comment.forwards} | 
+                        Ответов: ${comment.replies}
+                    `;
+                    li.appendChild(meta);
+
+                    commentsList.appendChild(li);
+                });
+            } else {
+                commentsList.innerHTML = '<li class="list-group-item">Комментарии отсутствуют или запрещены в этом канале</li>';
+            }
+
+            const totalComments = data.total_comments || 0;
+            const totalPages = Math.ceil(totalComments / commentsPerPage);
+            if (totalPages > 1) {
+                if (page > 1) {
+                    const prevLi = document.createElement('li');
+                    prevLi.className = 'page-item';
+                    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${page - 1}">«</a>`;
+                    paginationUl.appendChild(prevLi);
+                }
+                for (let i = 1; i <= totalPages; i++) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === page ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    paginationUl.appendChild(li);
+                }
+                if (page < totalPages) {
+                    const nextLi = document.createElement('li');
+                    nextLi.className = 'page-item';
+                    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${page + 1}">»</a>`;
+                    paginationUl.appendChild(nextLi);
+                }
+            }
+
+            highlightActivePost(postId);
+        } catch (error) {
+            console.error('Error loading post details:', error);
+            commentsList.innerHTML = `<li class="list-group-item">Ошибка загрузки комментариев: ${error.message}</li>`;
+        }
+    }
+
+    function highlightActivePost(postId) {
+        postRows.forEach(row => {
+            row.classList.remove('active-post');
+            if (row.getAttribute('data-post-id') === postId) {
+                row.classList.add('active-post');
+            }
+        });
+    }
+
+    detailButtons.forEach(button => {
+        button.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const postId = this.getAttribute('data-post-id');
+            const channelId = this.getAttribute('data-channel-id');
+            if (!postId || !channelId) {
+                return;
+            }
+            await loadPostDetails(postId, channelId, 1);
+            highlightActivePost(postId);
+        });
+    });
+
+    commentsPagination.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const target = e.target.closest('a');
+        if (target) {
+            const page = parseInt(target.getAttribute('data-page'));
+            if (page) {
+                await loadPostDetails(currentPostId, currentChannelId, page);
             }
         }
     });
 
-    new Chart(document.getElementById('erChart'), {
-        type: 'line',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Средний ER Post',
-                data: days.map(day => erData[day] || 0),
-                fill: false,
-                borderColor: 'rgb(255, 99, 132)',
-                tension: 0.1
-            }]
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        if (target.classList.contains('read-more')) {
+            e.preventDefault();
+            const container = target.closest('.post-text-container');
+            if (!container) return;
+
+            const shortText = container.querySelector('.post-text-short');
+            const fullText = container.querySelector('.post-text-full');
+            const isExpanded = target.getAttribute('data-expanded') === 'true';
+
+            if (!isExpanded) {
+                shortText.classList.add('d-none');
+                fullText.classList.remove('d-none');
+                target.textContent = 'свернуть';
+                target.setAttribute('data-expanded', 'true');
+            } else {
+                shortText.classList.remove('d-none');
+                fullText.classList.add('d-none');
+                target.textContent = 'читать далее';
+                target.setAttribute('data-expanded', 'false');
+            }
         }
     });
 
-    new Chart(document.getElementById('vrChart'), {
-        type: 'line',
-        data: {
-            labels: days,
-            datasets: [{
-                label: 'Средний VR Post',
-                data: days.map(day => vrData[day] || 0),
-                fill: false,
-                borderColor: 'rgb(54, 162, 235)',
-                tension: 0.1
-            }]
+    const filterAll = document.getElementById('filter-all');
+    const filterCheckboxes = document.querySelectorAll('input[name="filter"]:not(#filter-all)');
+    if (filterAll) {
+        filterAll.addEventListener('change', function() {
+            if (this.checked) {
+                filterCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        });
+
+        filterCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    filterAll.checked = false;
+                }
+            });
+        });
+    }
+
+    const categoryFilterAll = document.getElementById('category-filter-all');
+    const categoryCheckboxes = document.querySelectorAll('input[name="category_filter"]:not(#category-filter-all)');
+    if (categoryFilterAll) {
+        categoryFilterAll.addEventListener('change', function() {
+            if (this.checked) {
+                categoryCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+        });
+
+        categoryCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    categoryFilterAll.checked = false;
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('.category-select').forEach(select => {
+        const postId = select.getAttribute('data-post-id');
+        if (categoryChanges[postId]) {
+            select.value = categoryChanges[postId];
+            const row = select.closest('tr');
+            row.classList.add('modified');
         }
     });
 
-    new Chart(document.getElementById('contentTypesChart'), {
-        type: 'pie',
-        data: {
-            labels: Object.keys(contentTypesData),
-            datasets: [{
-                data: Object.values(contentTypesData),
-                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
-            }]
+    document.querySelectorAll('.category-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const category = this.value;
+            const postId = this.getAttribute('data-post-id');
+            const row = this.closest('tr');
+            const originalCategory = row.getAttribute('data-original-category');
+
+            if (category !== originalCategory) {
+                categoryChanges[postId] = category;
+                row.classList.add('modified');
+            } else {
+                delete categoryChanges[postId];
+                row.classList.remove('modified');
+            }
+            localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
+            checkForChanges();
+        });
+    });
+
+    applyChangesBtn.addEventListener('click', async function() {
+        if (!hasChanges) {
+            alert('Нет изменений для применения.');
+            return;
+        }
+
+        const button = this;
+        button.disabled = true;
+        button.textContent = 'Обработка...';
+
+        const formData = new FormData();
+        formData.append('changes', JSON.stringify(categoryChanges));
+
+        try {
+            const response = await fetch('{% url "telegram:apply_changes" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                body: formData
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const result = await response.json();
+
+            if (result.success) {
+                document.querySelectorAll('tr.modified').forEach(row => {
+                    row.classList.remove('modified');
+                    const select = row.querySelector('.category-select');
+                    row.setAttribute('data-original-category', select.value);
+                });
+                hasChanges = false;
+                button.disabled = true;
+                resetChangesBtn.style.display = 'none';
+                localStorage.removeItem('categoryChanges');
+                categoryChanges = {};
+                alert('Изменения успешно применены!');
+            } else {
+                alert('Ошибка: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error applying changes:', error);
+            alert('Ошибка при применении изменений: ' + error.message);
+        } finally {
+            button.textContent = 'Применить';
         }
     });
+
+    resetChangesBtn.addEventListener('click', function() {
+        if (!hasChanges) {
+            alert('Нет изменений для отмены.');
+            return;
+        }
+
+        categoryChanges = {};
+        localStorage.removeItem('categoryChanges');
+        document.querySelectorAll('tr.modified').forEach(row => {
+            row.classList.remove('modified');
+            const select = row.querySelector('.category-select');
+            select.value = row.getAttribute('data-original-category');
+        });
+        hasChanges = false;
+        applyChangesBtn.disabled = true;
+        resetChangesBtn.style.display = 'none';
+        alert('Изменения отменены.');
+    });
+
+    document.querySelectorAll('.pagination-link').forEach(link => {
+        link.addEventListener('click', function() {
+            localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
+        });
+    });
+});
 </script>
 {% endblock %}
