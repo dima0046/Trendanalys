@@ -113,7 +113,8 @@ CELERY_TIMEZONE = 'Europe/Moscow'
 CELERY_BEAT_SCHEDULE = {
     'run-daily-telegram-parser': {
         'task': 'myapp.telegram.tasks.run_daily_parser',
-        'schedule': crontab(hour=0, minute=0),  # Запуск в полночь
+        #'schedule': crontab(hour=13, minute=58),  # Запуск в полночь
+        'schedule': crontab(minute='*/2'),
     },
 }
 
