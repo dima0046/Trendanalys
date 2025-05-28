@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'myapp',
     'widget_tweaks',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -113,8 +114,8 @@ CELERY_TIMEZONE = 'Europe/Moscow'
 CELERY_BEAT_SCHEDULE = {
     'run-daily-telegram-parser': {
         'task': 'myapp.telegram.tasks.run_daily_parser',
-        #'schedule': crontab(hour=13, minute=58),  # Запуск в полночь
-        'schedule': crontab(minute='*/2'),
+        #'schedule': crontab(minute='*')  # Для теста
+        'schedule': crontab(hour=16, minute=48),  # Каждый день в 00:00
     },
 }
 

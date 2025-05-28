@@ -198,3 +198,5 @@ def run_daily_parser():
     except Exception as e:
         logger.error(f"Ошибка в run_daily_parser: {str(e)}")
         raise
+
+print("tasks.py loaded")
