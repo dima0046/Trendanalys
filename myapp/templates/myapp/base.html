@@ -147,11 +147,27 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if user.is_authenticated %}
-                    <li class="nav-item">
+
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link {% if request.path == '/telegram/' %}active{% endif %} dropdown-toggle" href="#" id="moreDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fab fa-telegram me-1"></i> Telegram
+                        </a>
+                    <ul class="dropdown-menu" aria-labelledby="moreDropdown">
+                        <li><a class="dropdown-item" href="{% url 'telegram:telegram' %}"><i class="fab fa-telegram me-2"></i> Анализ</a></li>
+                        <li><a class="dropdown-item" href="{% url 'telegram:telegram_daily' %}"><i class="fab fa-telegram me-2"></i> Работа с БД</a></li>
+                    </ul>
+                    </li>
+                    
+                    <!--
+                    <li class="nav-item dropdown">
                         <a class="nav-link {% if request.path == '/telegram/' %}active{% endif %}" href="{% url 'telegram:telegram' %}">
                             <i class="fab fa-telegram me-1"></i> Telegram
                         </a>
                     </li>
+                    -->
+
+
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/vk/' %}active{% endif %}" href="#">
                             <i class="fab fa-vk me-1"></i> ВКонтакте
@@ -181,6 +197,10 @@
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i> Профиль</a></li>
                                 <li><a class="dropdown-item" href="{% url 'password_change' %}"><i class="fas fa-key me-2"></i> Сменить пароль</a></li>
+                                {% if user.is_superuser %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="fas fa-tools me-2"></i> Панель администратора</a></li>
+                                {% endif %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'custom_logout' %}"><i class="fas fa-sign-out-alt me-2"></i> Выйти</a></li>
                             </ul>
