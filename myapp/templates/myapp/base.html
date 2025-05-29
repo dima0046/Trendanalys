@@ -12,6 +12,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome для иконок -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+    <link href="https://fonts.googleapis.com/css?family=Merriweather:400,900,900i" rel="stylesheet">
     
 <style>
         :root {
@@ -117,6 +120,53 @@
             color: rgba(255, 255, 255, 0.5);
             font-size: 0.9rem;
         }
+
+        #button_back_to_top {
+            display: inline-block;
+            background-color: #1DA1F2;
+            width: 50px;
+            height: 50px;
+            text-align: center;
+            border-radius: 4px;
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            transition: background-color .3s, 
+                opacity .5s, visibility .5s;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 1000;
+        }
+        
+        #button_back_to_top::after {
+            content: "\f077";
+            font-family: FontAwesome;
+            font-weight: normal;
+            font-style: normal;
+            font-size: 2em;
+            line-height: 50px;
+            color: #fff;
+        }
+
+        #button_back_to_top {
+            text-decoration: none !important;
+        }
+
+        #button_back_to_top:hover {
+            cursor: pointer;
+            background-color: #333;
+        }
+
+        #button_back_to_top:active {
+            background-color: #555;
+        }
+
+        #button_back_to_top.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Styles for the content section */
         
         @media (max-width: 767.98px) {
             .footer {
@@ -130,7 +180,14 @@
             .social-links {
                 justify-content: center;
             }
+
+              #button_back_to_top {
+                margin: 30px;
+            }
         }
+
+
+        
     </style>
 </head>
 <body>
@@ -222,6 +279,9 @@
         </div>
     </nav>
 
+    <!-- Back to top button -->
+    <a id="button_back_to_top"></a>
+
     <div class="container-fluid px-0">
         {% block content %}
         {% endblock %}
@@ -298,6 +358,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script>
         // Анимация навбара при скролле
         document.addEventListener('DOMContentLoaded', function() {
@@ -320,6 +381,21 @@
                     link.classList.add('active');
                 }
             });
+        });
+
+        var btn = $('#button_back_to_top');
+
+        $(window).scroll(function() {
+        if ($(window).scrollTop() > 300) {
+            btn.addClass('show');
+        } else {
+            btn.removeClass('show');
+        }
+        });
+
+        btn.on('click', function(e) {
+        e.preventDefault();
+        $('html, body').animate({scrollTop:0}, '300');
         });
     </script>
 </body>
