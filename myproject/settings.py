@@ -115,7 +115,7 @@ CELERY_BEAT_SCHEDULE = {
     'run-daily-telegram-parser': {
         'task': 'myapp.telegram.tasks.run_daily_parser',
         #'schedule': crontab(minute='*')  # Для теста
-        'schedule': crontab(hour=19, minute=9),  # Каждый день в 00:00
+        'schedule': crontab(hour=0, minute=0),  # Каждый день в 00:00
     },
 }
 

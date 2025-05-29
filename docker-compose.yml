@@ -1,13 +1,73 @@
+version: '3.9'
+
 services:
   web:
     build: .
     command: gunicorn --bind 0.0.0.0:8000 --workers 3 myproject.wsgi:application
     volumes:
       - static_volume:/app/staticfiles
+      - media_volume:/app/media
       - ./session_name.session:/app/session_name.session
+      - ./debug.log:/app/debug.log
     ports:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=trendanalys
+      - POSTGRES_USER=trendanalys_user
+      - POSTGRES_PASSWORD=trendanalys_pass
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    command: celery -A myproject worker -l info
+    volumes:
+      - ./session_name.session:/app/session_name.session
+      - media_volume:/app/media
+      - ./debug.log:/app/debug.log
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    command: celery -A myproject beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./session_name.session:/app/session_name.session
+      - media_volume:/app/media
+      - ./debug.log:/app/debug.log
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
 volumes:
   static_volume:
+  media_volume:
+  postgres_data:
+  redis_data:
