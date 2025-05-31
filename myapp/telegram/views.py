@@ -570,6 +570,14 @@ def export_to_excel(request):
     headers = ['Канал', 'ID Канала', 'ID Поста', 'Дата', 'Сообщение', 'Категория', 'Ссылка', 'Просмотров', 'Реакции', 'Пересылки', 'Комментарии']
     sheet1.append(headers)
 
+    # 2) Расчет процента всех категорий на основе parsed_data
+    category_counts = defaultdict(int)
+    total_posts = len(parsed_data)
+    for item in parsed_data:
+        category = item.get('category', 'N/A')
+        category_counts[category] += 1
+    category_percentages = {cat: (count / total_posts * 100) for cat, count in category_counts.items()}
+
     for item in parsed_data:
         row = [
             item['title'], 
@@ -586,7 +594,15 @@ def export_to_excel(request):
         ]
         sheet1.append(row)
 
-    # Prepare data for calculations
+    # Добавляем строку с процентами категорий в конец Sheet 1
+    sheet1.append([''] * (len(headers) - 1) + ['Процент категорий'])
+    for cat, percent in category_percentages.items():
+        sheet1.append([''] * (len(headers) - 1) + [f"{cat}: {percent:.2f}%"])
+
+    # Sheet 2: Publications by Day of Week
+    sheet2 = workbook.create_sheet('Количество публикаций')
+    sheet2.append(['День недели', 'Количество публикаций'])
+    publications_by_day = defaultdict(int)
     days_map = {
         'Понедельник': 'Monday',
         'Вторник': 'Tuesday',
@@ -596,15 +612,9 @@ def export_to_excel(request):
         'Суббота': 'Saturday',
         'Воскресенье': 'Sunday'
     }
-    
-    # Sheet 2: Publications by Day of Week
-    sheet2 = workbook.create_sheet('Количество публикаций')
-    sheet2.append(['День недели', 'Количество публикаций'])
-    publications_by_day = defaultdict(int)
     for item in parsed_data:
         date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S')
         day_name = date.strftime('%A')
-        # Convert English day name to Russian
         for ru_day, en_day in days_map.items():
             if en_day == day_name:
                 publications_by_day[ru_day] += 1
@@ -656,7 +666,7 @@ def export_to_excel(request):
 
     # Sheet 6: Top 3 Posts by Channel and Day (by VR Post)
     sheet6 = workbook.create_sheet('Топ-3 постов по дню')
-    sheet6.append(['Дата', 'Канал', 'link', 'ID Поста', 'Категория', 'Сообщение', 'VR Post'])
+    sheet6.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
     posts_by_channel_day = defaultdict(list)
     for item in parsed_data:
         date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
@@ -667,14 +677,101 @@ def export_to_excel(request):
             'link': item['link'],
             'category': item['category'],
             'message': item['message'],
-            'vr_post': float(item['vr_post'])            
+            'vr_post': float(item['vr_post'])
         })
     
     for (date, channel), posts in posts_by_channel_day.items():
-        # Sort by VR Post and take top 3
         top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
         for post in top_posts:
-            sheet6.append([date, channel, post['post_id'],  post['link'], post['category'], post['message'], post['vr_post']])
+            sheet6.append([date, channel, post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
+
+    # 1) Расчет процента каждой категории для Sheet 6 (отдельная таблица)
+    sheet7 = workbook.create_sheet('Процент категорий в Топ-3')
+    sheet7.append(['Категория', 'Количество постов', 'Процент'])
+    category_counts_top3 = defaultdict(int)
+    total_top3_posts = 0
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            category = post['category']
+            category_counts_top3[category] += 1
+            total_top3_posts += 1
+    for cat, count in category_counts_top3.items():
+        percentage = (count / total_top3_posts * 100) if total_top3_posts > 0 else 0
+        sheet7.append([cat, count, f"{percentage:.2f}%"])
+
+    # 3) Динамика типов контента по каждому дню
+    sheet8 = workbook.create_sheet('Динамика типов контента по дням')
+    sheet8.append(['Дата', 'Тип контента', 'Количество'])
+    content_by_day = defaultdict(lambda: defaultdict(int))
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        content_type = item['type'].lower()
+        if content_type in ['image', 'video', 'text']:
+            content_by_day[date][content_type] += 1
+    for date, types in content_by_day.items():
+        for content_type, count in types.items():
+            sheet8.append([date, content_type, count])
+
+    # 4) Динамика типов контента по каждой категории по каждому дню
+    sheet9 = workbook.create_sheet('Динамика типов контента по категориям')
+    sheet9.append(['Дата', 'Категория', 'Тип контента', 'Количество'])
+    content_by_category_day = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        category = item.get('category', 'N/A')
+        content_type = item['type'].lower()
+        if content_type in ['image', 'video', 'text']:
+            content_by_category_day[date][category][content_type] += 1
+    for date, categories in content_by_category_day.items():
+        for category, types in categories.items():
+            for content_type, count in types.items():
+                sheet9.append([date, category, content_type, count])
+
+    # 5) Динамика VRpost по категориям по каждому дню
+    sheet10 = workbook.create_sheet('Динамика VRpost по категориям')
+    sheet10.append(['Дата', 'Категория', 'Средний VRpost'])
+    vr_by_category_day = defaultdict(lambda: defaultdict(list))
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        category = item.get('category', 'N/A')
+        vr_by_category_day[date][category].append(float(item['vr_post']))
+    for date, categories in vr_by_category_day.items():
+        for category, vrs in categories.items():
+            avg_vr = mean(vrs) if vrs else 0
+            sheet10.append([date, category, avg_vr])
+
+    # 6) Динамика количества постов по каждой категории по каждому дню
+    sheet11 = workbook.create_sheet('Динамика постов по категориям')
+    sheet11.append(['Дата', 'Категория', 'Количество постов'])
+    posts_by_category_day = defaultdict(lambda: defaultdict(int))
+    for item in parsed_data:
+        date = datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+        category = item.get('category', 'N/A')
+        posts_by_category_day[date][category] += 1
+    for date, categories in posts_by_category_day.items():
+        for category, count in categories.items():
+            sheet11.append([date, category, count])
+
+    # 7) ТОП-25 публикаций по каждой категории по VRpost
+    sheet12 = workbook.create_sheet('ТОП-25 постов по категориям')
+    sheet12.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
+    posts_by_category = defaultdict(list)
+    for item in parsed_data:
+        category = item.get('category', 'N/A')
+        posts_by_category[category].append({
+            'date': datetime.strptime(item['date'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d'),
+            'title': item['title'],
+            'post_id': item['post_id'],
+            'link': item['link'],
+            'category': category,
+            'message': item['message'],
+            'vr_post': float(item['vr_post'])
+        })
+    for category, posts in posts_by_category.items():
+        top_25_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:25]
+        for post in top_25_posts:
+            sheet12.append([post['date'], post['title'], post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
 
     # Save the workbook
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
