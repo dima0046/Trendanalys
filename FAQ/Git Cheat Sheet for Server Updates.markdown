@@ -83,4 +83,124 @@ docker-compose exec web python manage.py collectstatic --noinput  # Собрат
 ```
 
 ## Как определить, что нужно пересобирать
-1. **
+1. **Проверить изменения**:
+   ```bash
+   git log --name-status HEAD^..HEAD
+   ```
+   Посмотрите, какие файлы изменились:
+   - `requirements.txt`, `package.json` → установить зависимости.
+   - `migrations/*.py` → применить миграции.
+   - `Dockerfile`, `docker-compose.yml` → пересобрать контейнеры.
+   - `static/` или `templates/` с новыми файлами → собрать `collectstatic`.
+
+2. **Проверить зависимости**:
+   ```bash
+   git diff HEAD^ HEAD requirements.txt
+   ```
+   Если есть изменения, обновите зависимости.
+
+3. **Проверить миграции**:
+   ```bash
+   python manage.py showmigrations
+   ```
+   Если есть неприменённые миграции, выполните:
+   ```bash
+   python manage.py migrate
+   ```
+
+## Работа с конфликтами при `git pull`
+Если возник конфликт:
+1. Проверить конфликтующие файлы:
+   ```bash
+   git status
+   ```
+2. Разрешить конфликты вручную:
+   - Откройте файлы, найдите маркеры `<<<<<<<`, `=======`, `>>>>>>>`.
+   - Выберите нужные изменения.
+3. Добавить разрешённые файлы:
+   ```bash
+   git add .
+   ```
+4. Завершить слияние:
+   ```bash
+   git commit
+   ```
+5. Продолжить обновление:
+   ```bash
+   git pull origin main
+   ```
+
+## Полезные команды
+- **Откатить изменения, если что-то сломалось**:
+  ```bash
+  git reset --hard HEAD^  # Откатить до предыдущего коммита
+  git pull origin main  # Повторить pull
+  ```
+- **Очистить кэш Docker** (если образы не обновляются):
+  ```bash
+  docker system prune -a
+  docker-compose build --no-cache
+  ```
+- **Проверить логи сервера**:
+  ```bash
+  journalctl -u gunicorn -n 100
+  docker-compose logs web
+  ```
+- **Проверить статус сервисов**:
+  ```bash
+  sudo systemctl status gunicorn nginx
+  docker-compose ps
+  ```
+
+## Советы
+- **Создайте бэкап перед обновлением**:
+  ```bash
+  tar -czf backup_$(date +%Y%m%d).tar.gz /path/to/project
+  pg_dump -U postgres dbname > db_backup_$(date +%Y%m%d).sql
+  ```
+- **Тестируйте на staging-сервере**:
+  - Сначала примените `git pull` на staging, чтобы избежать проблем на продакшене.
+- **Используйте CI/CD**:
+  - Настройте GitHub Actions или GitLab CI для автоматического деплоя.
+- **Логируйте изменения**:
+  ```bash
+  git pull origin main | tee -a deploy.log
+  ```
+
+## Пример полного деплоя (Docker + Django)
+```bash
+cd /path/to/project
+git pull origin main
+if git diff HEAD^ HEAD requirements.txt | grep .; then
+    docker-compose build
+fi
+if git diff HEAD^ HEAD migrations/ | grep .; then
+    docker-compose exec web python manage.py migrate
+fi
+docker-compose down
+docker-compose up -d
+docker-compose exec web python manage.py collectstatic --noinput
+```
+
+## Частые ошибки
+- **"Your local changes would be overwritten"**:
+  Решение:
+  ```bash
+  git stash  # Сохранить локальные изменения
+  git pull origin main
+  git stash pop  # Вернуть изменения
+  ```
+- **"Database migrations conflict"**:
+  Проверьте миграции:
+  ```bash
+  python manage.py makemigrations --check
+  ```
+  Если есть конфликты, исправьте их вручную в `migrations/`.
+- **"Docker container fails to start"**:
+  Проверьте логи:
+  ```bash
+  docker-compose logs web
+  ```
+  Убедитесь, что `.env` актуален.
+
+Если что-то пошло не так, пишите в поддержку или смотрите документацию на [Git](https://git-scm.com/docs) или [Docker](https://docs.docker.com).

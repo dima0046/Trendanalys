@@ -10,6 +10,8 @@ services:
       - ./session_name.session:/app/session_name.session
     ports:
       - "8000:8000"
+    environment:
+      - TZ=Europe/Moscow
     env_file:
       - .env
     depends_on:
@@ -25,6 +27,7 @@ services:
       - POSTGRES_DB=trendanalys
       - POSTGRES_USER=trendanalys_user
       - POSTGRES_PASSWORD=trendanalys_pass
+      - TZ=Europe/Moscow
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -33,6 +36,8 @@ services:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
+    environment:
+      - TZ=Europe/Moscow
     ports:
       - "6379:6379"
     restart: unless-stopped
@@ -43,6 +48,8 @@ services:
     volumes:
       - ./session_name.session:/app/session_name.session
       - media_volume:/app/media
+    environment:
+      - TZ=Europe/Moscow
     env_file:
       - .env
     depends_on:
@@ -56,6 +63,8 @@ services:
     volumes:
       - ./session_name.session:/app/session_name.session
       - media_volume:/app/media
+    environment:
+      - TZ=Europe/Moscow
     env_file:
       - .env
     depends_on:

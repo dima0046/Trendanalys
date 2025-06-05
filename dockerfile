@@ -32,5 +32,9 @@ RUN python manage.py collectstatic --noinput --settings=myproject.settings
 
 EXPOSE 8000
 
+# Установка временной зоны
+ENV TZ=Europe/Moscow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Команда по умолчанию
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "myproject.wsgi:application"]
