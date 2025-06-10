@@ -242,7 +242,136 @@
                         </tbody>
                     </table>
                 </div>
-                
+
+                <!-- Добавьте этот код сразу после закрывающего тега </table> -->
+                    <div class="mobile-posts d-lg-none">
+                    {% if parsed_data %}
+                        {% for item in parsed_data %}
+                        <div class="card mb-3 post-card {% if item.highlight %}border-primary{% endif %}" 
+                            data-post-id="{{ item.post_id }}" 
+                            data-channel-id="{{ item.id }}"
+                            data-views="{{ item.views }}" 
+                            data-forwards="{{ item.forwards }}" 
+                            data-reactions="{{ item.reactions }}" 
+                            data-comments="{{ item.comments_count }}" 
+                            data-original-category="{{ item.category }}"
+                            data-er-post="{{ item.er_post }}" 
+                            data-er-view="{{ item.er_view }}" 
+                            data-vr-post="{{ item.vr_post }}">
+                        <div class="card-body">
+                            <!-- Заголовок карточки -->
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="d-flex align-items-center">
+                                <img class="channel-avatar rounded-circle border me-2" 
+                                    src="{% if item.avatar %}/static/{{ item.avatar }}{% else %}{% static 'images/default_avatar.jpg' %}{% endif %}" 
+                                    alt="{{ item.title }}" 
+                                    width="40" 
+                                    height="40">
+                                <div>
+                                <h6 class="mb-0">{{ item.title }}</h6>
+                                <small class="text-muted">
+                                    <a href="{{ item.link }}" class="text-decoration-none" target="_blank">#{{ item.post_id }}</a> • {{ item.date }}
+                                </small>
+                                </div>
+                            </div>
+                            <span class="badge bg-{% if item.type == 'message' %}info{% else %}secondary{% endif %}">
+                                {{ item.type }}
+                            </span>
+                            </div>
+                            
+                            <!-- Текст поста -->
+                            <div class="post-text-container mb-3">
+                            <p class="post-text-short mb-0">{{ item.message|truncatechars:100 }}</p>
+                            {% if item.message|length > 100 %}
+                            <p class="post-text-full mb-0 d-none">{{ item.message }}</p>
+                            <a href="#" class="read-more small text-primary" data-expanded="false">читать далее</a>
+                            {% endif %}
+                            </div>
+                            
+                            <!-- Категория -->
+                            <div class="mb-3">
+                            <label class="form-label small text-muted">Категория</label>
+                            <select class="form-select form-select-sm category-select" 
+                                    data-post-id="{{ item.post_id }}" 
+                                    data-data-id="{{ data_id }}">
+                                {% for category in unique_categories %}
+                                <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
+                                {% endfor %}
+                            </select>
+                            </div>
+                            
+                            <!-- Статистика в 2 ряда -->
+                            <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.views }}</div>
+                                <div class="stat-label small text-muted"><i class="far fa-eye"></i> Просмотры</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.forwards }}</div>
+                                <div class="stat-label small text-muted"><i class="fas fa-share"></i> Репосты</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.reactions }}</div>
+                                <div class="stat-label small text-muted"><i class="fas fa-poo"></i> Реакции</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.comments_count }}</div>
+                                <div class="stat-label small text-muted"><i class="fas fa-comment"></i> Комментарии</div>
+                                </div>
+                            </div>
+                            </div>
+                            
+                            <!-- Показатели эффективности -->
+                            <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.er_post }}</div>
+                                <div class="stat-label small text-muted">ERpost</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.er_view }}</div>
+                                <div class="stat-label small text-muted">ERview</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item text-center p-2 bg-light rounded">
+                                <div class="stat-value">{{ item.vr_post }}</div>
+                                <div class="stat-label small text-muted">VRpost</div>
+                                </div>
+                            </div>
+                            </div>
+                            
+                            <!-- Кнопка деталей -->
+                            <div class="d-flex justify-content-end">
+                            <button class="btn btn-sm btn-outline-primary details-btn" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#postDetailsModal" 
+                                    data-post-id="{{ item.post_id }}" 
+                                    data-channel-id="{{ item.id }}">
+                                <i class="fas fa-info-circle me-1"></i> Детали
+                            </button>
+                            </div>
+                        </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                        <i class="fas fa-inbox fs-1 text-muted mb-3"></i>
+                        <h5 class="text-muted">Данные отсутствуют</h5>
+                        <p class="text-muted">Загрузите данные для анализа</p>
+                        </div>
+                    {% endif %}
+                    </div>
+                </div>
                 {% if parsed_data %}
                 <div class="card-footer bg-white border-0">
                     <nav aria-label="Page navigation">
@@ -368,6 +497,55 @@
             white-space: nowrap;
         }
     }
+
+
+    /* Мобильная версия карточек */
+    @media (max-width: 991.98px) {
+    .mobile-posts {
+        display: block;
+    }
+    
+    .table-responsive {
+        display: none;
+    }
+    
+    .post-card {
+        transition: all 0.2s;
+    }
+    
+    .post-card.modified {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-left: 3px solid #ffc107;
+    }
+    
+    .post-card.active-post {
+        background-color: rgba(110, 69, 226, 0.1) !important;
+        border-left: 3px solid var(--primary);
+    }
+    
+    .stat-item {
+        height: 100%;
+    }
+    
+    .stat-value {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+    }
+    }
+
+    @media (min-width: 992px) {
+    .mobile-posts {
+        display: none;
+    }
+    
+    .table-responsive {
+        display: block;
+    }
+    }
 </style>
 
 <!-- Подключаем Bootstrap 5 JS -->
@@ -479,7 +657,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPage = page;
 
         try {
-            const response = await fetch(`/get_post_details/?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+            const baseUrl = "{% url 'telegram:get_post_details' %}";
+            const response = await fetch(`${baseUrl}?post_id=${postId}&channel_id=${channelId}&page=${page}&limit=${commentsPerPage}`);
+
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
@@ -846,6 +1026,37 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
         });
     });
+
+    // В начале скрипта, после объявления переменных
+    const mobilePostCards = document.querySelectorAll('.post-card');
+
+    // В функции highlightActivePost добавьте:
+    mobilePostCards.forEach(card => {
+        card.classList.remove('active-post');
+        if (card.getAttribute('data-post-id') === postId) {
+            card.classList.add('active-post');
+        }
+    });
+
+    // В обработчике change для category-select добавьте:
+    document.querySelectorAll('.post-card .category-select').forEach(select => {
+        select.addEventListener('change', function() {
+            // ... существующий код ...
+            const card = this.closest('.post-card');
+            if (category !== originalCategory) {
+                card.classList.add('modified');
+            } else {
+                card.classList.remove('modified');
+            }
+        });
+    });
+
+    // В обработчике resetChangesBtn добавьте:
+    document.querySelectorAll('.post-card.modified').forEach(card => {
+        card.classList.remove('modified');
+    });
 });
+
+
 </script>
 {% endblock %}
