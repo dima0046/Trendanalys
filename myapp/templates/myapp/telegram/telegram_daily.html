@@ -1,5 +1,5 @@
 {% extends 'myapp/base.html' %}
-{% load static %}
+{% load static querystring_tags %}
 
 {% block title %}Telegram Аналитика | TrendWatcher{% endblock %}
 
@@ -28,61 +28,41 @@
             <div class="row">
                 <!-- Блок фильтров -->
                 <div class="col-lg-3">
-                    <!-- Форма загрузки данных -->
+                    <!-- Форма загрузки данных и фильтров -->
                     <div class="card shadow-sm border-0 mb-4">
                         <div class="card-header bg-white border-0">
-                            <h5 class="card-title"><i class="fas fa-cloud-download-alt me-2"></i>Загрузка данных</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="get" id="telegram-form" class="needs-validation" novalidate>
-                                {{ form.as_p }}
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-download me-2"></i>Показать
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    <!-- Фильтры -->
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-header bg-white border-0 pb-0">
-                            <h5 class="card-title"><i class="fas fa-filter me-2"></i>Фильтры</h5>
+                            <h5 class="card-title"><i class="fas fa-filter me-2"></i>Фильтры и поиск</h5>
                         </div>
                         <div class="card-body">
                             <form method="get" id="filters-form" class="needs-validation" novalidate>
-                                <input type="hidden" name="start_date" value="{{ start_date }}">
-                                <input type="hidden" name="end_date" value="{{ end_date }}">
+                                {{ form.as_p }}
+                                <!-- Поле поиска -->
+                                <div class="mb-3">
+                                    <label for="search_message" class="form-label">Поиск по тексту поста</label>
+                                    <input type="text" class="form-control" id="search_message" name="search_message" value="{{ search_message }}">
+                                </div>
+                                <!-- Фильтры по каналам -->
                                 {% if unique_titles %}
                                 <div class="mb-4">
                                     <h6 class="fw-bold mb-3"><i class="fas fa-list me-2"></i>Каналы</h6>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" value="all" id="filter-all" name="filter" {% if 'all' in filters or not filters %}checked{% endif %}>
-                                        <label class="form-check-label" for="filter-all">Все каналы</label>
-                                    </div>
-                                    <div class="filter-scroll" style="max-height: 200px; overflow-y: auto;">
+                                    <select class="form-select" name="filter" multiple size="5">
+                                        <option value="all" {% if 'all' in filters or not filters %}selected{% endif %}>Все каналы</option>
                                         {% for title in unique_titles %}
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" value="{{ title }}" id="filter-{{ forloop.counter }}" name="filter" {% if title in filters %}checked{% endif %}>
-                                            <label class="form-check-label" for="filter-{{ forloop.counter }}">{{ title }}</label>
-                                        </div>
+                                        <option value="{{ title }}" {% if title in filters %}selected{% endif %}>{{ title }}</option>
                                         {% endfor %}
-                                    </div>
+                                    </select>
                                 </div>
                                 {% endif %}
+                                <!-- Фильтры по категориям -->
                                 {% if parsed_data %}
                                 <div class="mb-4">
                                     <h6 class="fw-bold mb-3"><i class="fas fa-tags me-2"></i>Категории</h6>
-                                    <div class="form-check mb-2">
-                                        <input class="form-check-input" type="checkbox" value="all" id="category-filter-all" name="category_filter" {% if 'all' in category_filters or not category_filters %}checked{% endif %}>
-                                        <label class="form-check-label" for="category-filter-all">Все категории</label>
-                                    </div>
-                                    <div class="filter-scroll" style="max-height: 200px; overflow-y: auto;">
+                                    <select class="form-select" name="category_filter" multiple size="5">
+                                        <option value="all" {% if 'all' in category_filters or not category_filters %}selected{% endif %}>Все категории</option>
                                         {% for category in unique_categories_in_data %}
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" value="{{ category }}" id="category-filter-{{ forloop.counter }}" name="category_filter" {% if category in category_filters %}checked{% endif %}>
-                                            <label class="form-check-label" for="category-filter-{{ forloop.counter }}">{{ category }}</label>
-                                        </div>
+                                        <option value="{{ category }}" {% if category in category_filters %}selected{% endif %}>{{ category }}</option>
                                         {% endfor %}
-                                    </div>
+                                    </select>
                                 </div>
                                 {% endif %}
                                 <button type="submit" class="btn btn-primary w-100">
@@ -110,31 +90,45 @@
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>Результаты анализа</h5>
-                            <div class="d-flex gap-2">
-                                <button id="reset-changes-btn" class="btn btn-sm btn-outline-danger" style="display: none;">
-                                    <i class="fas fa-undo me-1"></i>Отменить
-                                </button>
-                                <button id="apply-changes-btn" class="btn btn-sm btn-primary" disabled>
-                                    <i class="fas fa-save me-1"></i>Применить
-                                </button>
-                            </div>
                         </div>
                         <div class="card-body p-0">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th width="50px" class="text-center">Канал</th>
-                                            <th>Пост</th>
-                                            <th width="150px">Категория</th>
-                                            <th width="80px" class="text-center" title="Просмотры"><i class="far fa-eye"></i></th>
-                                            <th width="80px" class="text-center" title="Репосты"><i class="fas fa-share"></i></th>
-                                            <th width="80px" class="text-center" title="Реакции"><i class="fas fa-poo"></i></th>
-                                            <th width="80px" class="text-center" title="Комментарии"><i class="fas fa-comment"></i></th>
-                                            <th width="80px" class="text-center" title="ER (пост)">ERpost</th>
-                                            <th width="80px" class="text-center" title="ER (просмотры)">ERview</th>
-                                            <th width="80px" class="text-center" title="VR (пост)">VRpost</th>
-                                            <th width="80px" class="text-center">Тип</th>
+                                            <th width="50px" class="text-center">
+                                                <a href="?{% query_string sort_by='channel__title' sort_direction=next_sort_direction %}">Канал</a>
+                                            </th>
+                                            <th>
+                                                <a href="?{% query_string sort_by='message' sort_direction=next_sort_direction %}">Пост</a>
+                                            </th>
+                                            <th width="150px">
+                                                <a href="?{% query_string sort_by='category' sort_direction=next_sort_direction %}">Категория</a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="Просмотры">
+                                                <a href="?{% query_string sort_by='views' sort_direction=next_sort_direction %}"><i class="far fa-eye"></i></a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="Репосты">
+                                                <a href="?{% query_string sort_by='forwards' sort_direction=next_sort_direction %}"><i class="fas fa-share"></i></a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="Реакции">
+                                                <a href="?{% query_string sort_by='reactions' sort_direction=next_sort_direction %}"><i class="fas fa-poo"></i></a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="Комментарии">
+                                                <a href="?{% query_string sort_by='comments_count' sort_direction=next_sort_direction %}"><i class="fas fa-comment"></i></a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="ER (пост)">
+                                                <a href="?{% query_string sort_by='er_post' sort_direction=next_sort_direction %}">ERpost</a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="ER (просмотры)">
+                                                <a href="?{% query_string sort_by='er_view' sort_direction=next_sort_direction %}">ERview</a>
+                                            </th>
+                                            <th width="80px" class="text-center" title="VR (пост)">
+                                                <a href="?{% query_string sort_by='vr_post' sort_direction=next_sort_direction %}">VRpost</a>
+                                            </th>
+                                            <th width="80px" class="text-center">
+                                                <a href="?{% query_string sort_by='post_type' sort_direction=next_sort_direction %}">Тип</a>
+                                            </th>
                                             <th width="50px" class="text-center">Детали</th>
                                         </tr>
                                     </thead>
@@ -168,19 +162,40 @@
                                                         <div class="post-text-container">
                                                             <p class="post-text-short mb-0">{{ item.message|truncatechars:100 }}</p>
                                                             {% if item.message|length > 100 %}
-                                                            <p class="post-text-full mb-0 d-none">{{ item.message }}</p>
-                                                            <a href="#" class="read-more small text-primary" data-expanded="false">читать далее</a>
+                                                            <form method="get" action="{% url 'telegram:telegram_daily' %}">
+                                                                <input type="hidden" name="expanded_post_id" value="{% if expanded_post_id == item.post_id|stringformat:'s' %}0{% else %}{{ item.post_id }}{% endif %}">
+                                                                {% for key, value in request.GET.items %}
+                                                                    {% if key != 'expanded_post_id' %}
+                                                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                                <button type="submit" class="btn btn-link small text-primary p-0">
+                                                                    {% if expanded_post_id == item.post_id|stringformat:'s' %}
+                                                                        свернуть
+                                                                    {% else %}
+                                                                        читать далее
+                                                                    {% endif %}
+                                                                </button>
+                                                            </form>
+                                                            {% if expanded_post_id == item.post_id|stringformat:'s' %}
+                                                                <p class="post-text-full mb-0">{{ item.message }}</p>
+                                                            {% endif %}
                                                             {% endif %}
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <select class="form-select form-select-sm category-select" 
-                                                            data-post-id="{{ item.post_id }}">
-                                                        {% for category in unique_categories_in_data %}
-                                                        <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
-                                                        {% endfor %}
-                                                    </select>
+                                                    <form method="post" action="{% url 'telegram:update_category' %}">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="post_id" value="{{ item.post_id }}">
+                                                        <input type="hidden" name="channel_id" value="{{ item.channel.id }}">
+                                                        <select class="form-select form-select-sm category-select" name="category">
+                                                            {% for category in unique_categories_in_data %}
+                                                            <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        <button type="submit" class="btn btn-sm btn-primary mt-1">Применить</button>
+                                                    </form>
                                                 </td>
                                                 <td class="text-center">{{ item.views }}</td>
                                                 <td class="text-center">{{ item.forwards }}</td>
@@ -225,12 +240,12 @@
                                     <ul class="pagination justify-content-center mb-0">
                                         {% if parsed_data.has_previous %}
                                             <li class="page-item">
-                                                <a class="page-link" href="?page=1&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="First">
+                                                <a class="page-link" href="?{% query_string page=1 %}" aria-label="First">
                                                     <i class="fas fa-angle-double-left"></i>
                                                 </a>
                                             </li>
                                             <li class="page-item">
-                                                <a class="page-link" href="?page={{ parsed_data.previous_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Previous">
+                                                <a class="page-link" href="?{% query_string page=parsed_data.previous_page_number %}" aria-label="Previous">
                                                     <i class="fas fa-angle-left"></i>
                                                 </a>
                                             </li>
@@ -240,18 +255,18 @@
                                                 <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                                             {% elif num > parsed_data.number|add:'-3' and num < parsed_data.number|add:'3' %}
                                                 <li class="page-item">
-                                                    <a class="page-link" href="?page={{ num }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}">{{ num }}</a>
+                                                    <a class="page-link" href="?{% query_string page=num %}">{{ num }}</a>
                                                 </li>
                                             {% endif %}
                                         {% endfor %}
                                         {% if parsed_data.has_next %}
                                             <li class="page-item">
-                                                <a class="page-link" href="?page={{ parsed_data.next_page_number }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Next">
+                                                <a class="page-link" href="?{% query_string page=parsed_data.next_page_number %}" aria-label="Next">
                                                     <i class="fas fa-angle-right"></i>
                                                 </a>
                                             </li>
                                             <li class="page-item">
-                                                <a class="page-link" href="?page={{ parsed_data.paginator.num_pages }}&sort_by={{ sort_by }}&sort_direction={{ sort_direction }}&filter={{ filters|join:'&filter=' }}&category_filter={{ category_filters|join:'&category_filter=' }}&start_date={{ start_date }}&end_date={{ end_date }}" aria-label="Last">
+                                                <a class="page-link" href="?{% query_string page=parsed_data.paginator.num_pages %}" aria-label="Last">
                                                     <i class="fas fa-angle-double-right"></i>
                                                 </a>
                                             </li>
@@ -293,7 +308,7 @@
     </div>
 </div>
 
-<!-- Стили из data.html -->
+<!-- Стили -->
 <style>
     .channel-avatar {
         object-fit: cover;
@@ -302,10 +317,6 @@
     }
     .post-text-container {
         position: relative;
-    }
-    .read-more {
-        cursor: pointer;
-        text-decoration: none;
     }
     .table th {
         font-weight: 600;
@@ -324,9 +335,6 @@
     .active-post {
         background-color: rgba(110, 69, 226, 0.1) !important;
         border-left: 3px solid var(--primary);
-    }
-    .modified {
-        background-color: rgba(255, 193, 7, 0.1) !important;
     }
     .filter-scroll::-webkit-scrollbar {
         width: 6px;
@@ -367,30 +375,13 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 
-<!-- JavaScript из data.html -->
+<!-- JavaScript только для модального окна деталей -->
 <script>
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     const postRows = document.querySelectorAll('.post-row');
     const detailButtons = document.querySelectorAll('.details-btn');
     const postDetailsModal = new bootstrap.Modal(document.getElementById('postDetailsModal'));
     const modalBody = document.querySelector('#postDetailsModal .modal-body');
-    const applyChangesBtn = document.getElementById('apply-changes-btn');
-    const resetChangesBtn = document.getElementById('reset-changes-btn');
 
     // Начальная структура модального окна
     modalBody.innerHTML = `
@@ -449,24 +440,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentChannelId = null;
     let currentPage = 1;
     const commentsPerPage = 10;
-    let hasChanges = false;
-    let categoryChanges = JSON.parse(localStorage.getItem('categoryChanges')) || {};
-
-    function checkForChanges() {
-        hasChanges = false;
-        postRows.forEach(row => {
-            const postId = row.getAttribute('data-post-id');
-            const originalCategory = row.getAttribute('data-original-category');
-            const currentCategory = categoryChanges[postId] || row.querySelector('.category-select').value;
-            if (currentCategory && currentCategory !== originalCategory) {
-                hasChanges = true;
-            }
-        });
-        applyChangesBtn.disabled = !hasChanges;
-        resetChangesBtn.style.display = hasChanges ? 'block' : 'none';
-    }
-
-    checkForChanges();
 
     async function loadPostDetails(postId, channelId, page = 1) {
         currentPostId = postId;
@@ -517,6 +490,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         li.className = 'list-group-item reaction-item';
                         const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
                         li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
+                        reactionsList.appendChild(li);
                     });
                     reactionsList.appendChild(hiddenContainer);
 
@@ -669,173 +643,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 await loadPostDetails(currentPostId, currentChannelId, page);
             }
         }
-    });
-
-    document.addEventListener('click', function(e) {
-        const target = e.target;
-        if (target.classList.contains('read-more')) {
-            e.preventDefault();
-            const container = target.closest('.post-text-container');
-            if (!container) return;
-
-            const shortText = container.querySelector('.post-text-short');
-            const fullText = container.querySelector('.post-text-full');
-            const isExpanded = target.getAttribute('data-expanded') === 'true';
-
-            if (!isExpanded) {
-                shortText.classList.add('d-none');
-                fullText.classList.remove('d-none');
-                target.textContent = 'свернуть';
-                target.setAttribute('data-expanded', 'true');
-            } else {
-                shortText.classList.remove('d-none');
-                fullText.classList.add('d-none');
-                target.textContent = 'читать далее';
-                target.setAttribute('data-expanded', 'false');
-            }
-        }
-    });
-
-    const filterAll = document.getElementById('filter-all');
-    const filterCheckboxes = document.querySelectorAll('input[name="filter"]:not(#filter-all)');
-    if (filterAll) {
-        filterAll.addEventListener('change', function() {
-            if (this.checked) {
-                filterCheckboxes.forEach(checkbox => {
-                    checkbox.checked = false;
-                });
-            }
-        });
-
-        filterCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    filterAll.checked = false;
-                }
-            });
-        });
-    }
-
-    const categoryFilterAll = document.getElementById('category-filter-all');
-    const categoryCheckboxes = document.querySelectorAll('input[name="category_filter"]:not(#category-filter-all)');
-    if (categoryFilterAll) {
-        categoryFilterAll.addEventListener('change', function() {
-            if (this.checked) {
-                categoryCheckboxes.forEach(checkbox => {
-                    checkbox.checked = false;
-                });
-            }
-        });
-
-        categoryCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    categoryFilterAll.checked = false;
-                }
-            });
-        });
-    }
-
-    document.querySelectorAll('.category-select').forEach(select => {
-        const postId = select.getAttribute('data-post-id');
-        if (categoryChanges[postId]) {
-            select.value = categoryChanges[postId];
-            const row = select.closest('tr');
-            row.classList.add('modified');
-        }
-    });
-
-    document.querySelectorAll('.category-select').forEach(select => {
-        select.addEventListener('change', function() {
-            const category = this.value;
-            const postId = this.getAttribute('data-post-id');
-            const row = this.closest('tr');
-            const originalCategory = row.getAttribute('data-original-category');
-
-            if (category !== originalCategory) {
-                categoryChanges[postId] = category;
-                row.classList.add('modified');
-            } else {
-                delete categoryChanges[postId];
-                row.classList.remove('modified');
-            }
-            localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
-            checkForChanges();
-        });
-    });
-
-    applyChangesBtn.addEventListener('click', async function() {
-        if (!hasChanges) {
-            alert('Нет изменений для применения.');
-            return;
-        }
-
-        const button = this;
-        button.disabled = true;
-        button.textContent = 'Обработка...';
-
-        const formData = new FormData();
-        formData.append('changes', JSON.stringify(categoryChanges));
-
-        try {
-            const response = await fetch('{% url "telegram:apply_changes" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                },
-                body: formData
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            const result = await response.json();
-
-            if (result.success) {
-                document.querySelectorAll('tr.modified').forEach(row => {
-                    row.classList.remove('modified');
-                    const select = row.querySelector('.category-select');
-                    row.setAttribute('data-original-category', select.value);
-                });
-                hasChanges = false;
-                button.disabled = true;
-                resetChangesBtn.style.display = 'none';
-                localStorage.removeItem('categoryChanges');
-                categoryChanges = {};
-                alert('Изменения успешно применены!');
-            } else {
-                alert('Ошибка: ' + result.error);
-            }
-        } catch (error) {
-            console.error('Error applying changes:', error);
-            alert('Ошибка при применении изменений: ' + error.message);
-        } finally {
-            button.textContent = 'Применить';
-        }
-    });
-
-    resetChangesBtn.addEventListener('click', function() {
-        if (!hasChanges) {
-            alert('Нет изменений для отмены.');
-            return;
-        }
-
-        categoryChanges = {};
-        localStorage.removeItem('categoryChanges');
-        document.querySelectorAll('tr.modified').forEach(row => {
-            row.classList.remove('modified');
-            const select = row.querySelector('.category-select');
-            select.value = row.getAttribute('data-original-category');
-        });
-        hasChanges = false;
-        applyChangesBtn.disabled = true;
-        resetChangesBtn.style.display = 'none';
-        alert('Изменения отменены.');
-    });
-
-    document.querySelectorAll('.pagination-link').forEach(link => {
-        link.addEventListener('click', function() {
-            localStorage.setItem('categoryChanges', JSON.stringify(categoryChanges));
-        });
     });
 });
 </script>

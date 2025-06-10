@@ -1117,13 +1117,17 @@ def export_model_view(request):
 
 @login_required
 async def telegram_daily_view(request):
+    # Получение параметров запроса
     filters = request.GET.getlist('filter')
     category_filters = request.GET.getlist('category_filter')
+    search_message = request.GET.get('search_message', '')
     start_date = request.GET.get('start_date', '')
     end_date = request.GET.get('end_date', '')
     sort_by = request.GET.get('sort_by', 'post_id')
     sort_direction = request.GET.get('sort_direction', 'desc')
+    expanded_post_id = request.GET.get('expanded_post_id', '0')  # Новый параметр
 
+    # Инициализация формы
     form = TelegramForm(initial={
         'start_date': start_date,
         'end_date': end_date,
@@ -1132,6 +1136,7 @@ async def telegram_daily_view(request):
     # Асинхронный запрос к базе с предварительной загрузкой channel
     posts = await sync_to_async(lambda: TelegramPost.objects.select_related('channel').all())()
 
+    # Фильтрация
     if start_date:
         start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
         posts = await sync_to_async(lambda: posts.filter(date__gte=start_date))()
@@ -1142,20 +1147,18 @@ async def telegram_daily_view(request):
         posts = await sync_to_async(lambda: posts.filter(channel__title__in=filters))()
     if category_filters and 'all' not in category_filters:
         posts = await sync_to_async(lambda: posts.filter(category__in=category_filters))()
+    if search_message:
+        posts = await sync_to_async(lambda: posts.filter(message__icontains=search_message))()
 
-    reverse = sort_direction == 'desc'
-    if sort_by == 'channel':
-        order_field = '-channel__title' if reverse else 'channel__title'
-        posts = await sync_to_async(lambda: posts.order_by(order_field))()
-    elif sort_by == 'postid':
-        order_field = '-post_id' if reverse else 'post_id'
-        posts = await sync_to_async(lambda: posts.order_by(order_field))()
-    elif sort_by == 'date':
-        order_field = '-date' if reverse else 'date'
-        posts = await sync_to_async(lambda: posts.order_by(order_field))()
-    elif sort_by == 'category':
-        order_field = '-category' if reverse else 'category'
-        posts = await sync_to_async(lambda: posts.order_by(order_field))()
+    # Сортировка
+    valid_sort_fields = [
+        'channel__title', 'message', 'category', 'views', 'forwards', 
+        'reactions', 'comments_count', 'er_post', 'er_view', 'vr_post', 'post_type'
+    ]
+    if sort_by not in valid_sort_fields:
+        sort_by = 'post_id'  # Значение по умолчанию
+    order_field = f'-{sort_by}' if sort_direction == 'desc' else sort_by
+    posts = await sync_to_async(lambda: posts.order_by(order_field))()
 
     # Загружаем все посты в список
     posts_list = await sync_to_async(lambda: list(posts))()
@@ -1169,11 +1172,11 @@ async def telegram_daily_view(request):
     )()
 
     # Пагинация
-    paginator = Paginator(posts_list, 20)  # Используем список, а не QuerySet
+    paginator = Paginator(posts_list, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Аналитика
+    # Аналитика для графиков
     days_map = {
         'Понедельник': 'Monday',
         'Вторник': 'Tuesday',
@@ -1214,7 +1217,7 @@ async def telegram_daily_view(request):
             'post_id': post.post_id,
             'message': post.message or 'N/A',
             'vr_post': float(post.vr_post or 0),
-            'channel': channel  # Сохраняем channel для использования в top_posts
+            'channel': channel
         })
 
     for (date, channel), posts in posts_by_channel_day.items():
@@ -1236,16 +1239,21 @@ async def telegram_daily_view(request):
         if day not in vr_by_day_data:
             vr_by_day_data[day] = 0
 
+    # Вычисление следующего направления сортировки
+    next_sort_direction = 'asc' if sort_direction == 'desc' else 'desc'
+
     context = {
         'form': form,
         'parsed_data': page_obj,
         'filters': filters,
         'category_filters': category_filters,
+        'search_message': search_message,
         'unique_titles': unique_titles,
         'start_date': start_date,
         'end_date': end_date,
         'sort_by': sort_by,
         'sort_direction': sort_direction,
+        'next_sort_direction': next_sort_direction,
         'unique_categories': unique_categories_in_data,
         'unique_categories_in_data': unique_categories_in_data,
         'publications_by_day': json.dumps(dict(publications_by_day)),
@@ -1253,5 +1261,27 @@ async def telegram_daily_view(request):
         'vr_by_day': json.dumps(vr_by_day_data),
         'content_types': json.dumps(content_types_data),
         'top_posts': top_posts_data,
+        'expanded_post_id': expanded_post_id,  # Передаём ID развернутого поста
     }
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
+
+async def update_post_category(request):
+    if request.method == 'POST':
+        post_id = request.POST.get('post_id')
+        channel_id = request.POST.get('channel_id')
+        new_category = request.POST.get('category')
+
+        if not all([post_id, channel_id, new_category]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        try:
+            post = await sync_to_async(lambda: TelegramPost.objects.get(post_id=post_id, channel_id=channel_id))()
+            post.category = new_category
+            await sync_to_async(post.save)()
+            return JsonResponse({'success': True, 'message': 'Category updated successfully'})
+        except TelegramPost.DoesNotExist:
+            return JsonResponse({'error': 'Post not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Invalid request method'}, status=405)

@@ -53,3 +53,5 @@ myapp/telegram/machine_learning/categorized_2024.json
 exported_model/
 staticfiles/
 celerybeat-schedule
+project_structure.py
+project_structure.txt
