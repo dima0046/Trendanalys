@@ -1125,7 +1125,7 @@ async def telegram_daily_view(request):
     end_date = request.GET.get('end_date', '')
     sort_by = request.GET.get('sort_by', 'post_id')
     sort_direction = request.GET.get('sort_direction', 'desc')
-    expanded_post_id = request.GET.get('expanded_post_id', '0')  # Новый параметр
+    expanded_post_id = request.GET.get('expanded_post_id', '0')
 
     # Инициализация формы
     form = TelegramForm(initial={
@@ -1138,11 +1138,17 @@ async def telegram_daily_view(request):
 
     # Фильтрация
     if start_date:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
-        posts = await sync_to_async(lambda: posts.filter(date__gte=start_date))()
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            posts = await sync_to_async(lambda: posts.filter(date__gte=start_date))()
+        except ValueError:
+            start_date = ''  # Игнорируем некорректную дату
     if end_date:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-        posts = await sync_to_async(lambda: posts.filter(date__lte=end_date))()
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            posts = await sync_to_async(lambda: posts.filter(date__lte=end_date))()
+        except ValueError:
+            end_date = ''  # Игнорируем некорректную дату
     if filters and 'all' not in filters:
         posts = await sync_to_async(lambda: posts.filter(channel__title__in=filters))()
     if category_filters and 'all' not in category_filters:
@@ -1152,11 +1158,11 @@ async def telegram_daily_view(request):
 
     # Сортировка
     valid_sort_fields = [
-        'channel__title', 'message', 'category', 'views', 'forwards', 
+        'channel__title', 'message', 'category', 'views', 'forwards',
         'reactions', 'comments_count', 'er_post', 'er_view', 'vr_post', 'post_type'
     ]
     if sort_by not in valid_sort_fields:
-        sort_by = 'post_id'  # Значение по умолчанию
+        sort_by = 'post_id'
     order_field = f'-{sort_by}' if sort_direction == 'desc' else sort_by
     posts = await sync_to_async(lambda: posts.order_by(order_field))()
 
@@ -1261,7 +1267,7 @@ async def telegram_daily_view(request):
         'vr_by_day': json.dumps(vr_by_day_data),
         'content_types': json.dumps(content_types_data),
         'top_posts': top_posts_data,
-        'expanded_post_id': expanded_post_id,  # Передаём ID развернутого поста
+        'expanded_post_id': expanded_post_id,
     }
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
 
