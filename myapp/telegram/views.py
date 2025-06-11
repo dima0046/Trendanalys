@@ -1126,6 +1126,7 @@ async def telegram_daily_view(request):
     sort_by = request.GET.get('sort_by', 'post_id')
     sort_direction = request.GET.get('sort_direction', 'desc')
     expanded_post_id = request.GET.get('expanded_post_id', '0')
+    page_size = request.GET.get('page_size', '20')  # По умолчанию 20 записей
 
     # Инициализация формы
     form = TelegramForm(initial={
@@ -1142,13 +1143,13 @@ async def telegram_daily_view(request):
             start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
             posts = await sync_to_async(lambda: posts.filter(date__gte=start_date))()
         except ValueError:
-            start_date = ''  # Игнорируем некорректную дату
+            start_date = ''
     if end_date:
         try:
             end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
             posts = await sync_to_async(lambda: posts.filter(date__lte=end_date))()
         except ValueError:
-            end_date = ''  # Игнорируем некорректную дату
+            end_date = ''
     if filters and 'all' not in filters:
         posts = await sync_to_async(lambda: posts.filter(channel__title__in=filters))()
     if category_filters and 'all' not in category_filters:
@@ -1177,8 +1178,9 @@ async def telegram_daily_view(request):
         lambda: sorted(list(set(TelegramPost.objects.values_list('category', flat=True).exclude(category__isnull=True).exclude(category='N/A'))))
     )()
 
-    # Пагинация
-    paginator = Paginator(posts_list, 20)
+    # Пагинация с учетом page_size
+    page_size = int(page_size) if page_size.isdigit() and int(page_size) > 0 else len(posts_list)
+    paginator = Paginator(posts_list, page_size)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -1245,9 +1247,6 @@ async def telegram_daily_view(request):
         if day not in vr_by_day_data:
             vr_by_day_data[day] = 0
 
-    # Вычисление следующего направления сортировки
-    next_sort_direction = 'asc' if sort_direction == 'desc' else 'desc'
-
     context = {
         'form': form,
         'parsed_data': page_obj,
@@ -1259,7 +1258,6 @@ async def telegram_daily_view(request):
         'end_date': end_date,
         'sort_by': sort_by,
         'sort_direction': sort_direction,
-        'next_sort_direction': next_sort_direction,
         'unique_categories': unique_categories_in_data,
         'unique_categories_in_data': unique_categories_in_data,
         'publications_by_day': json.dumps(dict(publications_by_day)),
@@ -1268,10 +1266,11 @@ async def telegram_daily_view(request):
         'content_types': json.dumps(content_types_data),
         'top_posts': top_posts_data,
         'expanded_post_id': expanded_post_id,
+        'page_size': page_size,
     }
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
 
-async def update_post_category(request):
+async def update_post_category_daily(request):
     if request.method == 'POST':
         post_id = request.POST.get('post_id')
         channel_id = request.POST.get('channel_id')
@@ -1291,3 +1290,4 @@ async def update_post_category(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+    

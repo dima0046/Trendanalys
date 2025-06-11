@@ -35,6 +35,7 @@
                         </div>
                         <div class="card-body">
                             <form method="get" id="filters-form" class="needs-validation" novalidate>
+                                {% csrf_token %}
                                 <!-- Поля дат -->
                                 <div class="mb-3">
                                     <label for="id_start_date" class="form-label">Дата начала</label>
@@ -43,11 +44,6 @@
                                 <div class="mb-3">
                                     <label for="id_end_date" class="form-label">Дата окончания</label>
                                     {{ form.end_date }}
-                                </div>
-                                <!-- Поле поиска -->
-                                <div class="mb-3">
-                                    <label for="search_message" class="form-label">Поиск по тексту поста</label>
-                                    <input type="text" class="form-control" id="search_message" name="search_message" value="{{ search_message }}">
                                 </div>
                                 <!-- Фильтры по каналам -->
                                 {% if unique_titles %}
@@ -109,8 +105,49 @@
                         </div>
                     </div>
                 </div>
-                <!-- Основная таблица -->
+                <!-- Поиск и настройки таблицы -->
                 <div class="col-lg-10">
+                <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
+                            <div class="d-flex gap-2 align-items-center">
+                                <!-- Сортировка -->
+                                <select class="form-select" id="sort_by" name="sort_by">
+                                    <option value="post_id" {% if sort_by == 'post_id' %}selected{% endif %}>По умолчанию</option>
+                                    <option value="channel__title" {% if sort_by == 'channel__title' %}selected{% endif %}>Канал</option>
+                                    <option value="message" {% if sort_by == 'message' %}selected{% endif %}>Пост</option>
+                                    <option value="category" {% if sort_by == 'category' %}selected{% endif %}>Категория</option>
+                                    <option value="views" {% if sort_by == 'views' %}selected{% endif %}>Просмотры</option>
+                                    <option value="forwards" {% if sort_by == 'forwards' %}selected{% endif %}>Репосты</option>
+                                    <option value="reactions" {% if sort_by == 'reactions' %}selected{% endif %}>Реакции</option>
+                                    <option value="comments_count" {% if sort_by == 'comments_count' %}selected{% endif %}>Комментарии</option>
+                                    <option value="er_post" {% if sort_by == 'er_post' %}selected{% endif %}>ER (пост)</option>
+                                    <option value="er_view" {% if sort_by == 'er_view' %}selected{% endif %}>ER (просмотры)</option>
+                                    <option value="vr_post" {% if sort_by == 'vr_post' %}selected{% endif %}>VR (пост)</option>
+                                    <option value="post_type" {% if sort_by == 'post_type' %}selected{% endif %}>Тип</option>
+                                </select>
+                                <select class="form-select" id="sort_direction" name="sort_direction">
+                                    <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>По убыванию</option>
+                                    <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>По возрастанию</option>
+                                </select>
+                                <!-- Количество записей -->
+                                <select class="form-select" id="page_size" name="page_size">
+                                    <option value="20" {% if page_size|default:20 == 20 %}selected{% endif %}>20</option>
+                                    <option value="50" {% if page_size|default:20 == 50 %}selected{% endif %}>50</option>
+                                    <option value="100" {% if page_size|default:20 == 100 %}selected{% endif %}>100</option>
+                                    <option value="200" {% if page_size|default:20 == 200 %}selected{% endif %}>200</option>
+                                    <option value="0" {% if page_size|default:20 == 0 %}selected{% endif %}>Все</option>
+                                </select>
+                            </div>
+                            <!-- Поле поиска справа -->
+                            <form id="search-form" method="get" action="" class="input-group mb-0">
+                                <input type="text" class="form-control" id="search_message" name="search_message" value="{{ search_message }}" placeholder="Поиск по тексту поста">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <!-- Основная таблица -->
                     <div class="card shadow-sm border-0">
                         <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
                             <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>Результаты анализа</h5>
@@ -120,39 +157,17 @@
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
-                                            <th width="50px" class="text-center">
-                                                <a href="?{% query_string sort_by='channel__title' sort_direction=next_sort_direction %}">Канал</a>
-                                            </th>
-                                            <th>
-                                                <a href="?{% query_string sort_by='message' sort_direction=next_sort_direction %}">Пост</a>
-                                            </th>
-                                            <th width="150px">
-                                                <a href="?{% query_string sort_by='category' sort_direction=next_sort_direction %}">Категория</a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="Просмотры">
-                                                <a href="?{% query_string sort_by='views' sort_direction=next_sort_direction %}"><i class="far fa-eye"></i></a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="Репосты">
-                                                <a href="?{% query_string sort_by='forwards' sort_direction=next_sort_direction %}"><i class="fas fa-share"></i></a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="Реакции">
-                                                <a href="?{% query_string sort_by='reactions' sort_direction=next_sort_direction %}"><i class="fas fa-poo"></i></a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="Комментарии">
-                                                <a href="?{% query_string sort_by='comments_count' sort_direction=next_sort_direction %}"><i class="fas fa-comment"></i></a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="ER (пост)">
-                                                <a href="?{% query_string sort_by='er_post' sort_direction=next_sort_direction %}">ERpost</a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="ER (просмотры)">
-                                                <a href="?{% query_string sort_by='er_view' sort_direction=next_sort_direction %}">ERview</a>
-                                            </th>
-                                            <th width="80px" class="text-center" title="VR (пост)">
-                                                <a href="?{% query_string sort_by='vr_post' sort_direction=next_sort_direction %}">VRpost</a>
-                                            </th>
-                                            <th width="80px" class="text-center">
-                                                <a href="?{% query_string sort_by='post_type' sort_direction=next_sort_direction %}">Тип</a>
-                                            </th>
+                                            <th width="50px" class="text-center">Канал</th>
+                                            <th>Пост</th>
+                                            <th width="150px">Категория</th>
+                                            <th width="80px" class="text-center" title="Просмотры"><i class="far fa-eye"></i></th>
+                                            <th width="80px" class="text-center" title="Репосты"><i class="fas fa-share"></i></th>
+                                            <th width="80px" class="text-center" title="Реакции"><i class="fas fa-poo"></i></th>
+                                            <th width="80px" class="text-center" title="Комментарии"><i class="fas fa-comment"></i></th>
+                                            <th width="80px" class="text-center" title="ER (пост)">ERpost</th>
+                                            <th width="80px" class="text-center" title="ER (просмотры)">ERview</th>
+                                            <th width="80px" class="text-center" title="VR (пост)">VRpost</th>
+                                            <th width="80px" class="text-center">Тип</th>
                                             <th width="50px" class="text-center">Детали</th>
                                         </tr>
                                     </thead>
@@ -183,43 +198,23 @@
                                                         <small class="text-muted mb-1">
                                                             <a href="{{ item.link }}" class="text-decoration-none" target="_blank">#{{ item.post_id }}</a> • {{ item.date|date:"Y-m-d H:i:s" }}
                                                         </small>
-                                                        <div class="post-text-container">
+                                                        <div class="post-text-container mb-3">
                                                             <p class="post-text-short mb-0">{{ item.message|truncatechars:100 }}</p>
                                                             {% if item.message|length > 100 %}
-                                                            <form method="get" action="{% url 'telegram:telegram_daily' %}">
-                                                                <input type="hidden" name="expanded_post_id" value="{% if expanded_post_id == item.post_id|stringformat:'s' %}0{% else %}{{ item.post_id }}{% endif %}">
-                                                                {% for key, value in request.GET.items %}
-                                                                    {% if key != 'expanded_post_id' %}
-                                                                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                                                                    {% endif %}
-                                                                {% endfor %}
-                                                                <button type="submit" class="btn btn-link small text-primary p-0">
-                                                                    {% if expanded_post_id == item.post_id|stringformat:'s' %}
-                                                                        свернуть
-                                                                    {% else %}
-                                                                        читать далее
-                                                                    {% endif %}
-                                                                </button>
-                                                            </form>
-                                                            {% if expanded_post_id == item.post_id|stringformat:'s' %}
-                                                                <p class="post-text-full mb-0">{{ item.message }}</p>
-                                                            {% endif %}
+                                                                <p class="post-text-full mb-0 d-none">{{ item.message }}</p>
+                                                                <a href="#" class="read-more small text-primary" data-expanded="false">читать далее</a>
                                                             {% endif %}
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <form method="post" action="{% url 'telegram:update_category' %}">
-                                                        {% csrf_token %}
-                                                        <input type="hidden" name="post_id" value="{{ item.post_id }}">
-                                                        <input type="hidden" name="channel_id" value="{{ item.channel.id }}">
-                                                        <select class="form-select form-select-sm category-select" name="category">
-                                                            {% for category in unique_categories_in_data %}
-                                                            <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
-                                                            {% endfor %}
-                                                        </select>
-                                                        <button type="submit" class="btn btn-sm btn-primary mt-1">Применить</button>
-                                                    </form>
+                                                    <select class="form-select form-select-sm category-select" name="category" 
+                                                            data-post-id="{{ item.post_id }}" data-channel-id="{{ item.channel.id }}" 
+                                                            onchange="updateCategory(this)">
+                                                        {% for category in unique_categories_in_data %}
+                                                        <option value="{{ category }}" {% if item.category == category %}selected{% endif %}>{{ category }}</option>
+                                                        {% endfor %}
+                                                    </select>
                                                 </td>
                                                 <td class="text-center">{{ item.views }}</td>
                                                 <td class="text-center">{{ item.forwards }}</td>
@@ -393,21 +388,159 @@
     #charts-content {
         min-height: 500px;
     }
+
+    .card-header {
+    padding: 1rem 1.5rem;
+    }
+    .d-flex.justify-content-between {
+        flex-wrap: wrap;
+    }
+    #search-form {
+        max-width: 300px; /* Ограничим ширину поля поиска */
+    }
+    @media (max-width: 768px) {
+        #search-form {
+            margin-top: 1rem;
+            width: 100%;
+            max-width: none;
+        }
+    }
 </style>
 
 <!-- Подключаем Bootstrap 5 JS и Font Awesome -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
 
-<!-- JavaScript только для модального окна деталей -->
+<!-- JavaScript для фильтров, модального окна и обновлений -->
+<!-- JavaScript для фильтров, модального окна и обновлений -->
 <script>
+function updateCategory(select) {
+    const postId = select.getAttribute('data-post-id');
+    const channelId = select.getAttribute('data-channel-id');
+    const newCategory = select.value;
+
+    console.log('Sending update:', { postId, channelId, newCategory }); // Лог отправляемых данных
+
+    fetch('/telegram/update_post_category_daily/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: `post_id=${encodeURIComponent(postId)}&channel_id=${encodeURIComponent(channelId)}&category=${encodeURIComponent(newCategory)}`
+    })
+    .then(response => {
+        console.log('Response status:', response.status); // Лог статуса ответа
+        if (!response.ok) {
+            throw new Error(`Ошибка: ${response.status} - ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response data:', data); // Лог данных ответа
+        if (data.success) {
+            console.log('Категория успешно обновлена');
+            location.reload();
+        } else {
+            console.error('Ошибка сервера:', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка запроса:', error);
+    });
+}
+
+// Получение CSRF токена
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Привязка событий
+    document.getElementById('sort_by').addEventListener('change', updateSort);
+    document.getElementById('sort_direction').addEventListener('change', updateSort);
+    document.getElementById('page_size').addEventListener('change', updatePageSize);
+
+    // Обработчик для переключения текста поста
+    document.addEventListener('click', function(e) {
+        const target = e.target;
+        if (target.classList.contains('read-more')) {
+            e.preventDefault();
+            const container = target.closest('.post-text-container');
+            if (!container) return;
+
+            const shortText = container.querySelector('.post-text-short');
+            const fullText = container.querySelector('.post-text-full');
+            const isExpanded = target.getAttribute('data-expanded') === 'true';
+
+            if (!isExpanded) {
+                shortText.classList.add('d-none');
+                fullText.classList.remove('d-none');
+                target.textContent = 'свернуть';
+                target.setAttribute('data-expanded', 'true');
+            } else {
+                shortText.classList.remove('d-none');
+                fullText.classList.add('d-none');
+                target.textContent = 'читать далее';
+                target.setAttribute('data-expanded', 'false');
+            }
+        }
+    });
+
+    // Форма поиска
+    const searchForm = document.getElementById('search-form');
+    if (!searchForm) {
+        const searchInput = document.getElementById('search_message');
+        const searchButton = document.getElementById('search-button');
+        searchButton.addEventListener('click', function() {
+            const form = document.createElement('form');
+            form.method = 'get';
+            form.action = window.location.pathname;
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'search_message';
+            input.value = searchInput.value;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        });
+    }
+
+    // Обновление сортировки
+    function updateSort() {
+        const sortBy = document.getElementById('sort_by').value;
+        const sortDirection = document.getElementById('sort_direction').value;
+        const url = new URL(window.location);
+        url.searchParams.set('sort_by', sortBy);
+        url.searchParams.set('sort_direction', sortDirection);
+        window.location.href = url.toString();
+    }
+
+    // Обновление количества записей
+    function updatePageSize() {
+        const pageSize = document.getElementById('page_size').value;
+        const url = new URL(window.location);
+        url.searchParams.set('page_size', pageSize);
+        window.location.href = url.toString();
+    }
+
+    // Модальное окно (оставляем без изменений, так как оно работает корректно)
     const postRows = document.querySelectorAll('.post-row');
     const detailButtons = document.querySelectorAll('.details-btn');
     const postDetailsModal = new bootstrap.Modal(document.getElementById('postDetailsModal'));
     const modalBody = document.querySelector('#postDetailsModal .modal-body');
 
-    // Начальная структура модального окна
     modalBody.innerHTML = `
         <div class="mb-3">
             <h6>Текст поста</h6>
