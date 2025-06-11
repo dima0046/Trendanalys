@@ -129,6 +129,11 @@
                                     <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>По убыванию</option>
                                     <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>По возрастанию</option>
                                 </select>
+                                <!-- Чекбокс Топ 3 постов -->
+                                <div class="form-check ms-2">
+                                    <input class="form-check-input" type="checkbox" id="top3_filter" name="top3_filter" {% if top3_filter %}checked{% endif %}>
+                                    <label class="form-check-label" for="top3_filter">Топ 3 постов</label>
+                                </div>
                                 <!-- Количество записей -->
                                 <select class="form-select" id="page_size" name="page_size">
                                     <option value="20" {% if page_size|default:20 == 20 %}selected{% endif %}>20</option>
@@ -471,6 +476,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sort_by').addEventListener('change', updateSort);
     document.getElementById('sort_direction').addEventListener('change', updateSort);
     document.getElementById('page_size').addEventListener('change', updatePageSize);
+    document.getElementById('top3_filter').addEventListener('change', updateFilters);
 
     // Обработчик для переключения текста поста
     document.addEventListener('click', function(e) {
@@ -524,6 +530,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = new URL(window.location);
         url.searchParams.set('sort_by', sortBy);
         url.searchParams.set('sort_direction', sortDirection);
+        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
         window.location.href = url.toString();
     }
 
@@ -532,10 +539,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const pageSize = document.getElementById('page_size').value;
         const url = new URL(window.location);
         url.searchParams.set('page_size', pageSize);
+        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
         window.location.href = url.toString();
     }
 
-    // Модальное окно (оставляем без изменений, так как оно работает корректно)
+    // Обновление фильтров
+    function updateFilters() {
+        const url = new URL(window.location);
+        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
+        window.location.href = url.toString();
+    }
+
+    // Модальное окно
     const postRows = document.querySelectorAll('.post-row');
     const detailButtons = document.querySelectorAll('.details-btn');
     const postDetailsModal = new bootstrap.Modal(document.getElementById('postDetailsModal'));

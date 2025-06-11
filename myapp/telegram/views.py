@@ -1127,6 +1127,7 @@ async def telegram_daily_view(request):
     sort_direction = request.GET.get('sort_direction', 'desc')
     expanded_post_id = request.GET.get('expanded_post_id', '0')
     page_size = request.GET.get('page_size', '20')  # По умолчанию 20 записей
+    top3_filter = request.GET.get('top3_filter') == 'on'  # Проверяем, включён ли чекбокс
 
     # Инициализация формы
     form = TelegramForm(initial={
@@ -1169,6 +1170,20 @@ async def telegram_daily_view(request):
 
     # Загружаем все посты в список
     posts_list = await sync_to_async(lambda: list(posts))()
+
+    # Применение фильтра Топ 3 на уровне Python (если включён)
+    if top3_filter:
+        posts_by_group = defaultdict(list)
+        for post in posts_list:
+            key = (post.channel_id, post.category or 'N/A', post.date.strftime('%Y-%m-%d'))
+            posts_by_group[key].append(post)
+
+        filtered_posts = []
+        for key, group in posts_by_group.items():
+            # Сортируем группу по vr_post и берём топ-3
+            sorted_group = sorted(group, key=lambda x: float(x.vr_post or 0), reverse=True)
+            filtered_posts.extend(sorted_group[:3])
+        posts_list = filtered_posts  # Обновляем posts_list только если топ-3 фильтр активен
 
     # Получение уникальных значений
     unique_titles = await sync_to_async(
@@ -1267,8 +1282,10 @@ async def telegram_daily_view(request):
         'top_posts': top_posts_data,
         'expanded_post_id': expanded_post_id,
         'page_size': page_size,
+        'top3_filter': top3_filter,  # Добавляем состояние фильтра в контекст
     }
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
+
 
 async def update_post_category_daily(request):
     if request.method == 'POST':
