@@ -66,7 +66,8 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
 
         logger.info(f"Начало парсинга постов для {channel.url} с {start_date} по {end_date}")
         async for post in client.iter_messages(entity, reverse=True, offset_date=end_date):
-            post_date = timezone.make_aware(post.date, timezone=timezone.UTC)  # Правильный импорт UTC
+            # Используем текущий часовой пояс вместо прямого UTC
+            post_date = timezone.make_aware(post.date, timezone.get_current_timezone())
             if post_date < start_date or (end_date and post_date > end_date):
                 logger.debug(f"Пост {post.id} ({post_date}) вне диапазона {start_date} - {end_date}")
                 continue
