@@ -1172,10 +1172,11 @@ async def telegram_daily_view(request):
     posts_list = await sync_to_async(lambda: list(posts))()
 
     # Применение фильтра Топ 3 на уровне Python (если включён)
+    logger.debug(f"Total posts before top3_filter: {len(posts_list)}")
     if top3_filter:
         posts_by_group = defaultdict(list)
         for post in posts_list:
-            key = (post.channel_id, post.category or 'N/A', post.date.strftime('%Y-%m-%d'))
+            key = (post.channel_id, post.date.strftime('%Y-%m-%d'))  # Группировка только по channel_id и дате
             posts_by_group[key].append(post)
 
         filtered_posts = []
@@ -1184,6 +1185,7 @@ async def telegram_daily_view(request):
             sorted_group = sorted(group, key=lambda x: float(x.vr_post or 0), reverse=True)
             filtered_posts.extend(sorted_group[:3])
         posts_list = filtered_posts  # Обновляем posts_list только если топ-3 фильтр активен
+        logger.debug(f"Total posts after top3_filter: {len(posts_list)}")
 
     # Получение уникальных значений
     unique_titles = await sync_to_async(
