@@ -66,8 +66,14 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
 
         logger.info(f"Начало парсинга постов для {channel.url} с {start_date} по {end_date}")
         async for post in client.iter_messages(entity, reverse=True, offset_date=end_date):
-            # Проверяем, осведомлен ли post.date, и используем его напрямую
-            post_date = post.date if timezone.is_aware(post.date) else timezone.make_aware(post.date, timezone.get_current_timezone())
+            # Проверяем и преобразуем post.date
+            if timezone.is_aware(post.date):
+                post_date = post.date.astimezone(timezone.get_current_timezone())
+                logger.debug(f"Преобразован осведомленный post.date: {post_date}")
+            else:
+                post_date = timezone.make_aware(post.date, timezone.get_current_timezone())
+                logger.debug(f"Создан осведомленный post.date: {post_date}")
+            
             if post_date < start_date or (end_date and post_date > end_date):
                 logger.debug(f"Пост {post.id} ({post_date}) вне диапазона {start_date} - {end_date}")
                 continue
@@ -183,7 +189,9 @@ async def run_daily_parser_manual():
     logger.info("Запуск run_daily_parser_manual")
     channels = await sync_to_async(lambda: list(TelegramChannel.objects.filter(is_active=True)))()
     logger.info(f"Количество активных каналов: {len(channels)}")
-    yesterday = timezone.now().date() - timedelta(days=1)  # 15 июня 2025
+    # Убедимся, что yesterday корректно вычисляется как 15 июня 2025
+    current_time = timezone.now()
+    yesterday = current_time.date() - timedelta(days=1)
     start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()), timezone.get_current_timezone())
     end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
     logger.info(f"Парсинг за период: {start_date} - {end_date}")
