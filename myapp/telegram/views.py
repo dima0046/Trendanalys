@@ -1178,8 +1178,10 @@ async def telegram_daily_view(request):
     if top3_filter:
         posts_by_group = defaultdict(list)
         for post in posts_list:
-            key = (post.channel_id, post.date.strftime('%Y-%m-%d'))  # Группировка только по channel_id и дате
-            posts_by_group[key].append(post)
+            # Пропускаем посты, где message равно 'N/A'
+            if post.message != 'N/A':
+                key = (post.channel_id, post.date.strftime('%Y-%m-%d'))  # Группировка только по channel_id и дате
+                posts_by_group[key].append(post)
 
         filtered_posts = []
         for key, group in posts_by_group.items():
