@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.telegram_view, name='telegram'),
     path('daily/', views.telegram_daily_view, name='telegram_daily'),
     path('export/', views.export_to_excel, name='export_to_excel'),
+    path('export_to_excel_daily/', views.export_to_excel_daily, name='export_to_excel_daily'),
     path('get_post_details/', views.get_post_details, name='get_post_details'),
     path('update-category/', views.update_post_category, name='update_category'),
     path('update_post_category_daily/', views.update_post_category_daily, name='update_post_category_daily'),

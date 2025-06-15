@@ -36,6 +36,8 @@ import logging
 
 # Excel processing
 import openpyxl
+from openpyxl import Workbook
+
 
 # JSON handling
 import json
@@ -61,6 +63,7 @@ from PIL import Image
 import io
 from collections import defaultdict
 from statistics import mean
+import statistics
 
 from asgiref.sync import sync_to_async
 
@@ -1172,7 +1175,6 @@ async def telegram_daily_view(request):
     posts_list = await sync_to_async(lambda: list(posts))()
 
     # Применение фильтра Топ 3 на уровне Python (если включён)
-    logger.debug(f"Total posts before top3_filter: {len(posts_list)}")
     if top3_filter:
         posts_by_group = defaultdict(list)
         for post in posts_list:
@@ -1185,7 +1187,6 @@ async def telegram_daily_view(request):
             sorted_group = sorted(group, key=lambda x: float(x.vr_post or 0), reverse=True)
             filtered_posts.extend(sorted_group[:3])
         posts_list = filtered_posts  # Обновляем posts_list только если топ-3 фильтр активен
-        logger.debug(f"Total posts after top3_filter: {len(posts_list)}")
 
     # Получение уникальных значений
     unique_titles = await sync_to_async(
@@ -1309,4 +1310,247 @@ async def update_post_category_daily(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+async def export_to_excel_daily(request):
+    # Получение параметров дат из запроса
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+
+    # Асинхронный запрос к базе данных с фильтрацией по датам
+    posts = await sync_to_async(lambda: TelegramPost.objects.select_related('channel').all())()
+    if start_date:
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+            posts = await sync_to_async(lambda: posts.filter(date__gte=start_date))()
+        except ValueError:
+            start_date = ''
+    if end_date:
+        try:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+            posts = await sync_to_async(lambda: posts.filter(date__lte=end_date))()
+        except ValueError:
+            end_date = ''
+
+    # Загружаем все посты в список
+    posts_list = await sync_to_async(lambda: list(posts))()
+    workbook = Workbook()
+
+    if not posts_list:
+        return HttpResponse("No data available for the selected period.", status=400)
+
+    # Получение диапазона дат для имени файла
+    dates = [post.date for post in posts_list]
+    min_date = min(dates).strftime('%Y%m%d')
+    max_date = max(dates).strftime('%Y%m%d')
+
+    # Sheet 1: Original Data
+    sheet1 = workbook.create_sheet('Исходные данные')
+    headers = ['Канал', 'ID Канала', 'ID Поста', 'Дата', 'Сообщение', 'Категория', 'Ссылка', 'Просмотров', 'Реакции', 'Пересылки', 'Комментарии']
+    sheet1.append(headers)
+
+    # Фильтруем посты для расчетов, исключая 'N/A' категории
+    valid_posts = [post for post in posts_list if post.category != 'N/A']
+    total_valid_posts = len(valid_posts)
+
+    # Расчет процента всех категорий на основе valid_posts
+    category_counts = defaultdict(int)
+    for post in valid_posts:
+        category = post.category if post.category else 'N/A'
+        category_counts[category] += 1
+    category_percentages = {cat: (count / total_valid_posts * 100) for cat, count in category_counts.items() if cat != 'N/A'}
+
+    for post in posts_list:  # Оставляем все посты в исходных данных
+        row = [
+            post.channel.title,
+            post.channel.id,
+            post.post_id,
+            post.date.strftime('%Y-%m-%d %H:%M:%S'),
+            post.message if post.message else 'N/A',
+            post.category if post.category else 'N/A',
+            f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            post.views if post.views else 0,
+            post.reactions if post.reactions else 0,
+            post.forwards if post.forwards else 0,
+            post.comments_count if post.comments_count else 0
+        ]
+        sheet1.append(row)
+
+    # Добавляем строку с процентами категорий в конец Sheet 1
+    sheet1.append([''] * (len(headers) - 1) + ['Процент категорий'])
+    for cat, percent in category_percentages.items():
+        sheet1.append([''] * (len(headers) - 1) + [f"{cat}: {percent:.2f}%"])
+
+    # Sheet 2: Publications by Day of Week
+    sheet2 = workbook.create_sheet('Количество публикаций')
+    sheet2.append(['День недели', 'Количество публикаций'])
+    publications_by_day = defaultdict(int)
+    days_map = {
+        'Понедельник': 'Monday',
+        'Вторник': 'Tuesday',
+        'Среда': 'Wednesday',
+        'Четверг': 'Thursday',
+        'Пятница': 'Friday',
+        'Суббота': 'Saturday',
+        'Воскресенье': 'Sunday'
+    }
+    for post in valid_posts:
+        day_name = post.date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                publications_by_day[ru_day] += 1
+    for day, count in publications_by_day.items():
+        sheet2.append([day, count])
+
+    # Sheet 3: Average ER Post by Day
+    sheet3 = workbook.create_sheet('Ср. ERpost по дню')
+    sheet3.append(['День недели', 'Средний ER Post'])
+    er_by_day = defaultdict(list)
+    for post in valid_posts:
+        day_name = post.date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                er_by_day[ru_day].append(float(post.er_post or 0))
+    for day, ers in er_by_day.items():
+        sheet3.append([day, statistics.mean(ers) if ers else 0])
+
+    # Sheet 4: Average VR Post by Day
+    sheet4 = workbook.create_sheet('Ср. VRpost по дню')
+    sheet4.append(['День недели', 'Средний VR Post'])
+    vr_by_day = defaultdict(list)
+    for post in valid_posts:
+        day_name = post.date.strftime('%A')
+        for ru_day, en_day in days_map.items():
+            if en_day == day_name:
+                vr_by_day[ru_day].append(float(post.vr_post or 0))
+    for day, vrs in vr_by_day.items():
+        sheet4.append([day, statistics.mean(vrs) if vrs else 0])
+
+    # Sheet 5: Content Type Distribution
+    sheet5 = workbook.create_sheet('Тип контента')
+    sheet5.append(['Тип контента', 'Процентное соотношение'])
+    content_types = defaultdict(int)
+    for post in valid_posts:
+        content_type = post.post_type.lower() if post.post_type else 'unknown'
+        if content_type in ['image', 'video', 'text']:
+            content_types[content_type] += 1
+    for content_type, count in content_types.items():
+        percentage = (count / total_valid_posts) * 100
+        sheet5.append([content_type, percentage])
+
+    # Sheet 6: Top 3 Posts by Channel and Day (by VR Post)
+    sheet6 = workbook.create_sheet('Топ-3 постов по дню')
+    sheet6.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
+    posts_by_channel_day = defaultdict(list)
+    for post in valid_posts:
+        date = post.date.strftime('%Y-%m-%d')
+        channel = post.channel.title
+        key = (date, channel)
+        posts_by_channel_day[key].append({
+            'post_id': post.post_id,
+            'link': f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            'category': post.category if post.category else 'N/A',
+            'message': post.message if post.message else 'N/A',
+            'vr_post': float(post.vr_post or 0)
+        })
+
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            sheet6.append([date, channel, post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
+
+    # Sheet 7: Процент категорий в Топ-3
+    sheet7 = workbook.create_sheet('Процент категорий в Топ-3')
+    sheet7.append(['Категория', 'Количество постов', 'Процент'])
+    category_counts_top3 = defaultdict(int)
+    total_top3_posts = 0
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
+        for post in top_posts:
+            category = post['category']
+            category_counts_top3[category] += 1
+            total_top3_posts += 1
+    for cat, count in category_counts_top3.items():
+        percentage = (count / total_top3_posts * 100) if total_top3_posts > 0 else 0
+        sheet7.append([cat, count, f"{percentage:.2f}%"])
+
+    # Sheet 8: Динамика типов контента по каждому дню
+    sheet8 = workbook.create_sheet('Динамика типов контента по дням')
+    sheet8.append(['Дата', 'Тип контента', 'Количество'])
+    content_by_day = defaultdict(lambda: defaultdict(int))
+    for post in valid_posts:
+        date = post.date.strftime('%Y-%m-%d')
+        content_type = post.post_type.lower() if post.post_type else 'unknown'
+        if content_type in ['image', 'video', 'text']:
+            content_by_day[date][content_type] += 1
+    for date, types in content_by_day.items():
+        for content_type, count in types.items():
+            sheet8.append([date, content_type, count])
+
+    # Sheet 9: Динамика типов контента по каждой категории по каждому дню
+    sheet9 = workbook.create_sheet('Динамика типов контента по категориям')
+    sheet9.append(['Дата', 'Категория', 'Тип контента', 'Количество'])
+    content_by_category_day = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    for post in valid_posts:
+        date = post.date.strftime('%Y-%m-%d')
+        category = post.category if post.category else 'N/A'
+        content_type = post.post_type.lower() if post.post_type else 'unknown'
+        if content_type in ['image', 'video', 'text']:
+            content_by_category_day[date][category][content_type] += 1
+    for date, categories in content_by_category_day.items():
+        for category, types in categories.items():
+            for content_type, count in types.items():
+                sheet9.append([date, category, content_type, count])
+
+    # Sheet 10: Динамика VRpost по категориям по каждому дню
+    sheet10 = workbook.create_sheet('Динамика VRpost по категориям')
+    sheet10.append(['Дата', 'Категория', 'Средний VRpost'])
+    vr_by_category_day = defaultdict(lambda: defaultdict(list))
+    for post in valid_posts:
+        date = post.date.strftime('%Y-%m-%d')
+        category = post.category if post.category else 'N/A'
+        vr_by_category_day[date][category].append(float(post.vr_post or 0))
+    for date, categories in vr_by_category_day.items():
+        for category, vrs in categories.items():
+            avg_vr = statistics.mean(vrs) if vrs else 0
+            sheet10.append([date, category, avg_vr])
+
+    # Sheet 11: Динамика количества постов по каждой категории по каждому дню
+    sheet11 = workbook.create_sheet('Динамика постов по категориям')
+    sheet11.append(['Дата', 'Категория', 'Количество постов'])
+    posts_by_category_day = defaultdict(lambda: defaultdict(int))
+    for post in valid_posts:
+        date = post.date.strftime('%Y-%m-%d')
+        category = post.category if post.category else 'N/A'
+        posts_by_category_day[date][category] += 1
+    for date, categories in posts_by_category_day.items():
+        for category, count in categories.items():
+            sheet11.append([date, category, count])
+
+    # Sheet 12: ТОП-25 публикаций по каждой категории по VRpost
+    sheet12 = workbook.create_sheet('ТОП-25 постов по категориям')
+    sheet12.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
+    posts_by_category = defaultdict(list)
+    for post in valid_posts:
+        category = post.category if post.category else 'N/A'
+        posts_by_category[category].append({
+            'date': post.date.strftime('%Y-%m-%d'),
+            'title': post.channel.title,
+            'post_id': post.post_id,
+            'link': f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            'category': category,
+            'message': post.message if post.message else 'N/A',
+            'vr_post': float(post.vr_post or 0)
+        })
+    for category, posts in posts_by_category.items():
+        top_25_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:25]
+        for post in top_25_posts:
+            sheet12.append([post['date'], post['title'], post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
+
+    # Сохранение файла
+    current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=telegram_data_daily_{min_date}to{max_date}_{current_time}.xlsx'
+    workbook.save(response)
+
+    return response
     

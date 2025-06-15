@@ -93,17 +93,18 @@
                     </div>
                     <!-- Экспорт -->
                     <div class="card shadow-sm border-0">
-                        <div class="card-header bg-white border-0 pb-0">
-                            <h5 class="card-title"><i class="fas fa-download me-2"></i>Экспорт</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="get" action="{% url 'telegram:export_to_excel' %}" class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success">
-                                    <i class="fas fa-file-excel me-2"></i>Excel
-                                </button>
-                            </form>
-                        </div>
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title"><i class="fas fa-download me-2"></i>Экспорт</h5>
                     </div>
+                    <div class="card-body">
+                        <form action="/telegram/export_to_excel_daily/" method="get" id="export-form">
+                            {% for key, value in request.GET.items %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                            <button type="submit" class="btn btn-primary">Excel</button>
+                        </form>
+                    </div>
+                </div>
                 </div>
                 <!-- Поиск и настройки таблицы -->
                 <div class="col-lg-10">
@@ -129,11 +130,6 @@
                                     <option value="desc" {% if sort_direction == 'desc' %}selected{% endif %}>По убыванию</option>
                                     <option value="asc" {% if sort_direction == 'asc' %}selected{% endif %}>По возрастанию</option>
                                 </select>
-                                <!-- Чекбокс Топ 3 постов -->
-                                <div class="form-check ms-2">
-                                    <input class="form-check-input" type="checkbox" id="top3_filter" name="top3_filter" {% if top3_filter %}checked{% endif %}>
-                                    <label class="form-check-label" for="top3_filter">Топ 3 постов</label>
-                                </div>
                                 <!-- Количество записей -->
                                 <select class="form-select" id="page_size" name="page_size">
                                     <option value="20" {% if page_size|default:20 == 20 %}selected{% endif %}>20</option>
@@ -142,6 +138,11 @@
                                     <option value="200" {% if page_size|default:20 == 200 %}selected{% endif %}>200</option>
                                     <option value="0" {% if page_size|default:20 == 0 %}selected{% endif %}>Все</option>
                                 </select>
+                                <!-- Чекбокс Топ 3 постов -->
+                                <div class="form-check ms-2" id="top3_filter">
+                                    <input class="form-check-input" type="checkbox" id="top3_filter_input" name="top3_filter" {% if top3_filter %}checked{% endif %}>
+                                    <label class="form-check-label" for="top3_filter_input">Топ 3 постов</label>
+                                </div>
                             </div>
                             <!-- Поле поиска справа -->
                             <form id="search-form" method="get" action="" class="input-group mb-0">
@@ -404,6 +405,23 @@
     #search-form {
         max-width: 300px; /* Ограничим ширину поля поиска */
     }
+
+    #top3_filter {
+        display: flex;           /* Выравнивание элементов в строку */
+        align-items: center;     /* Вертикальное выравнивание по центру */
+        margin-right: 10px;      /* Отступ справа для визуального разделения */
+
+    }
+
+    #top3_filter .form-check-input {
+        margin-right: 10px;       /* Отступ между флажком и текстом */
+    }
+
+    #top3_filter .form-check-label {
+        margin: 0;               /* Убираем лишние отступы у текста */
+        width: 100px;
+    }
+
     @media (max-width: 768px) {
         #search-form {
             margin-top: 1rem;
@@ -425,7 +443,7 @@ function updateCategory(select) {
     const channelId = select.getAttribute('data-channel-id');
     const newCategory = select.value;
 
-    console.log('Sending update:', { postId, channelId, newCategory }); // Лог отправляемых данных
+    console.log('Sending update:', { postId, channelId, newCategory });
 
     fetch('/telegram/update_post_category_daily/', {
         method: 'POST',
@@ -436,14 +454,14 @@ function updateCategory(select) {
         body: `post_id=${encodeURIComponent(postId)}&channel_id=${encodeURIComponent(channelId)}&category=${encodeURIComponent(newCategory)}`
     })
     .then(response => {
-        console.log('Response status:', response.status); // Лог статуса ответа
+        console.log('Response status:', response.status);
         if (!response.ok) {
             throw new Error(`Ошибка: ${response.status} - ${response.statusText}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Response data:', data); // Лог данных ответа
+        console.log('Response data:', data);
         if (data.success) {
             console.log('Категория успешно обновлена');
             location.reload();
@@ -477,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('sort_by').addEventListener('change', updateSort);
     document.getElementById('sort_direction').addEventListener('change', updateSort);
     document.getElementById('page_size').addEventListener('change', updatePageSize);
-    document.getElementById('top3_filter').addEventListener('change', updateFilters);
+    document.getElementById('top3_filter_input').addEventListener('change', updateFilters);
 
     // Обработчик для переключения текста поста
     document.addEventListener('click', function(e) {
@@ -531,7 +549,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = new URL(window.location);
         url.searchParams.set('sort_by', sortBy);
         url.searchParams.set('sort_direction', sortDirection);
-        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
+        url.searchParams.set('top3_filter', document.getElementById('top3_filter_input').checked ? 'on' : '');
         window.location.href = url.toString();
     }
 
@@ -540,14 +558,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const pageSize = document.getElementById('page_size').value;
         const url = new URL(window.location);
         url.searchParams.set('page_size', pageSize);
-        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
+        url.searchParams.set('top3_filter', document.getElementById('top3_filter_input').checked ? 'on' : '');
         window.location.href = url.toString();
     }
 
     // Обновление фильтров
     function updateFilters() {
         const url = new URL(window.location);
-        url.searchParams.set('top3_filter', document.getElementById('top3_filter').checked ? 'on' : '');
+        const isTop3Checked = document.getElementById('top3_filter_input').checked;
+        url.searchParams.set('top3_filter', isTop3Checked ? 'on' : '');
         window.location.href = url.toString();
     }
 
@@ -555,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const filtersForm = document.getElementById('filters-form');
     if (filtersForm) {
         filtersForm.addEventListener('submit', function(e) {
-            e.preventDefault(); // Предотвращаем стандартную отправку формы
+            e.preventDefault();
             const url = new URL(window.location);
             const formData = new FormData(this);
             for (let [key, value] of formData.entries()) {
@@ -566,7 +585,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             // Сохраняем состояние top3_filter
-            const top3Filter = document.getElementById('top3_filter').checked ? 'on' : '';
+            const top3Filter = document.getElementById('top3_filter_input').checked ? 'on' : '';
             url.searchParams.set('top3_filter', top3Filter);
             window.location.href = url.toString();
         });
@@ -684,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         li.className = 'list-group-item reaction-item';
                         const emoticon = reaction.emoticon.startsWith('custom_') ? '[Кастомная реакция]' : reaction.emoticon;
                         li.innerHTML = `<span class="reaction-emoji">${emoticon}</span> - ${reaction.count} ${reaction.count === 1 ? 'человек' : 'человек'}`;
-                        reactionsList.appendChild(li);
+                        hiddenContainer.appendChild(li);
                     });
                     reactionsList.appendChild(hiddenContainer);
 
