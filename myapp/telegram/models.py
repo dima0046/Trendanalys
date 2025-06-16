@@ -5,6 +5,7 @@ from django.utils import timezone
 class TelegramChannel(models.Model):
     url = models.URLField(max_length=1000, unique=True)
     title = models.CharField(max_length=255, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)  # Новое поле
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
