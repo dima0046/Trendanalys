@@ -3,7 +3,6 @@ import logging
 import os
 import asyncio
 from celery import shared_task
-from django.db import transaction
 from django.utils import timezone
 from datetime import datetime, timedelta
 from telethon import TelegramClient, functions, types
@@ -24,7 +23,9 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
     client = TelegramClient('session_name', api_id, api_hash)
     try:
         logger.info(f"Подключение к Telegram для {channel.url}")
-        await client.connect()
+        if not client.is_connected():
+            await client.connect()
+            logger.info("Клиент подключен")
         if not await client.is_user_authorized():
             logger.error(f"Клиент не авторизован для {channel.url}")
             raise Exception("Клиент Telegram не авторизован. Требуется ручная авторизация.")
@@ -37,7 +38,6 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         try:
             full_channel = await client(functions.channels.GetFullChannelRequest(channel=entity))
             subscriber_count = int(getattr(full_channel.full_chat, 'participants_count', 0))
-            logger.info(f"Подписчики для {channel.url}: {subscriber_count}")
         except Exception as e:
             logger.error(f"Ошибка получения количества подписчиков для {channel.url}: {str(e)}")
 
@@ -54,7 +54,6 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
                         img = img.resize((50, 50), Image.LANCZOS)
                         img.save(avatar_full_path, 'JPEG', quality=85)
                     avatar_path = f"avatars/{avatar_filename}"
-                    logger.info(f"Аватар сохранен для {channel.url}")
             except Exception as e:
                 logger.error(f"Ошибка загрузки аватара для {channel.url}: {str(e)}")
 
@@ -64,21 +63,11 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         data = []
         combined_message = None
 
-        logger.info(f"Начало парсинга постов для {channel.url} с {start_date} по {end_date}")
-        async for post in client.iter_messages(entity, reverse=True, offset_date=end_date):
-            # Проверяем и преобразуем post.date
-            if timezone.is_aware(post.date):
-                post_date = post.date.astimezone(timezone.get_current_timezone())
-                logger.debug(f"Преобразован осведомленный post.date: {post_date}")
-            else:
-                post_date = timezone.make_aware(post.date, timezone.get_current_timezone())
-                logger.debug(f"Создан осведомленный post.date: {post_date}")
-            
-            if post_date < start_date or (end_date and post_date > end_date):
-                logger.debug(f"Пост {post.id} ({post_date}) вне диапазона {start_date} - {end_date}")
-                continue
+        logger.info(f"Начало парсинга постов для {channel.url}")
+        async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
+            if end_date and post.date and post.date > end_date:
+                break
 
-            logger.debug(f"Обрабатывается пост {post.id} от {post_date}")
             post_type = 'text'
             if post.media:
                 if isinstance(post.media, types.MessageMediaPhoto):
@@ -105,7 +94,6 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
 
             try:
                 category = predict_category(message_text, model, vectorizer) if message_text != 'N/A' else 'N/A'
-                logger.debug(f"Категория для поста {post.id}: {category}")
             except Exception as e:
                 logger.error(f"Ошибка классификации для поста {post.id}: {str(e)}")
                 category = 'N/A'
@@ -122,7 +110,7 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
             post_data = {
                 'channel': channel,
                 'post_id': post.id,
-                'date': post_date,
+                'date': post.date,
                 'message': message_text,
                 'link': f"https://t.me/{entity.username}/{post.id}" if entity.username else f"https://t.me/c/{entity.id}/{post.id}",
                 'views': views,
@@ -139,43 +127,34 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
             }
             data.append(post_data)
 
-            try:
-                with transaction.atomic():
-                    obj, created = await sync_to_async(TelegramPost.objects.update_or_create)(
-                        channel=channel,
-                        post_id=post.id,
-                        defaults={
-                            'date': post_date,
-                            'message': message_text,
-                            'link': post_data['link'],
-                            'views': views,
-                            'reactions': reactions_count,
-                            'forwards': forwards_count,
-                            'comments_count': comments_count,
-                            'category': category,
-                            'avatar': avatar_path,
-                            'er_post': round(er_post, 2),
-                            'er_view': round(er_view, 2),
-                            'vr_post': round(vr_post, 2),
-                            'post_type': post_type,
-                            'subscribers': subscriber_count
-                        }
-                    )
-                    logger.info(f"Сохранен пост {post.id}, создан: {created}, дата: {post_date}")
-            except Exception as e:
-                logger.error(f"Ошибка сохранения поста {post.id} в транзакции: {str(e)}")
+            await sync_to_async(TelegramPost.objects.update_or_create)(
+                channel=channel,
+                post_id=post.id,
+                defaults={
+                    'date': post.date,
+                    'message': message_text,
+                    'link': post_data['link'],
+                    'views': views,
+                    'reactions': reactions_count,
+                    'forwards': forwards_count,
+                    'comments_count': comments_count,
+                    'category': category,
+                    'avatar': avatar_path,
+                    'er_post': round(er_post, 2),
+                    'er_view': round(er_view, 2),
+                    'vr_post': round(vr_post, 2),
+                    'post_type': post_type,
+                    'subscribers': subscriber_count
+                }
+            )
+            logger.info(f"Сохранен пост {post.id}")
 
         tr = (total_comments / subscriber_count / post_count * 100) if post_count > 0 and subscriber_count > 0 else 0
         for item in data:
             item['tr'] = round(tr, 2)
-        try:
-            with transaction.atomic():
-                await sync_to_async(TelegramPost.objects.filter(channel=channel).update)(tr=round(tr, 2))
-                logger.info(f"Обновлен TR для канала {channel.url}: {tr}")
-        except Exception as e:
-            logger.error(f"Ошибка обновления TR для канала {channel.url}: {str(e)}")
+        await sync_to_async(TelegramPost.objects.filter(channel=channel).update)(tr=round(tr, 2))
 
-        logger.info(f"Парсинг завершен, собрано {len(data)} постов для {channel.url}")
+        logger.info(f"Парсинг завершен, собрано {len(data)} постов")
         return data
     except Exception as e:
         logger.error(f"Ошибка получения данных для канала {channel.url}: {str(e)}")
@@ -189,10 +168,8 @@ async def run_daily_parser_manual():
     logger.info("Запуск run_daily_parser_manual")
     channels = await sync_to_async(lambda: list(TelegramChannel.objects.filter(is_active=True)))()
     logger.info(f"Количество активных каналов: {len(channels)}")
-    # Убедимся, что yesterday корректно вычисляется как 15 июня 2025
-    current_time = timezone.now()
-    yesterday = current_time.date() - timedelta(days=1)
-    start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()), timezone.get_current_timezone())
+    yesterday = timezone.now().date() - timedelta(days=1)
+    start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()))
     end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
     logger.info(f"Парсинг за период: {start_date} - {end_date}")
 
@@ -216,11 +193,7 @@ async def run_daily_parser_manual():
 def run_daily_parser():
     logger.info("Запуск задачи run_daily_parser")
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        loop.run_until_complete(run_daily_parser_manual())
+        asyncio.run(run_daily_parser_manual())
         logger.info("Задача run_daily_parser завершена успешно")
     except Exception as e:
         logger.error(f"Ошибка в run_daily_parser: {str(e)}")
