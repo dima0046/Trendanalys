@@ -64,9 +64,21 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         combined_message = None
 
         logger.info(f"Начало парсинга постов для {channel.url}")
-        async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
-            if end_date and post.date and post.date > end_date:
+        async for post in client.iter_messages(entity, reverse=False, offset_date=start_date):
+            if not post.date or post.date < start_date:
+                continue
+            if end_date and post.date > end_date:
                 break
+
+            # --- Проверка на дубли ---
+            exists = await sync_to_async(TelegramPost.objects.filter(
+                channel=channel,
+                post_id=post.id,
+            ).exists)()
+
+            if exists:
+                logger.info(f"Пропущен дубликат поста {post.id}")
+                continue
 
             post_type = 'text'
             if post.media:
@@ -76,16 +88,6 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
                     post_type = 'video'
 
             message_text = post.message if post.message else 'N/A'
-            if message_text == 'N/A' and (not post.grouped_id or (combined_message and combined_message.get('post_id') != post.id)):
-                if post.grouped_id and combined_message:
-                    combined_message['message'] += f"\n[{post_type.capitalize()}: {post.id}]"
-                    combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
-                continue
-
-            if post.media and isinstance(post.media, types.MessageMediaPhoto) and not post.message and combined_message and combined_message.get('message') != 'N/A':
-                combined_message['message'] += f"\n[Изображение: {post.media.photo.id}]"
-                combined_message['link'] = f"https://t.me/{entity.username}/{post.id}"
-                continue
 
             comments_count = post.replies.replies if hasattr(post, 'replies') and post.replies else 0
             reactions_count = sum(reaction.count for reaction in post.reactions.results) if hasattr(post, 'reactions') and post.reactions else 0
@@ -127,27 +129,9 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
             }
             data.append(post_data)
 
-            await sync_to_async(TelegramPost.objects.update_or_create)(
-                channel=channel,
-                post_id=post.id,
-                defaults={
-                    'date': post.date,
-                    'message': message_text,
-                    'link': post_data['link'],
-                    'views': views,
-                    'reactions': reactions_count,
-                    'forwards': forwards_count,
-                    'comments_count': comments_count,
-                    'category': category,
-                    'avatar': avatar_path,
-                    'er_post': round(er_post, 2),
-                    'er_view': round(er_view, 2),
-                    'vr_post': round(vr_post, 2),
-                    'post_type': post_type,
-                    'subscribers': subscriber_count
-                }
-            )
+            await sync_to_async(TelegramPost.objects.create)(**post_data)
             logger.info(f"Сохранен пост {post.id}")
+
 
         tr = (total_comments / subscriber_count / post_count * 100) if post_count > 0 and subscriber_count > 0 else 0
         for item in data:
