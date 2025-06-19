@@ -65,17 +65,15 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         combined_message = None
 
         logger.info(f"Начало парсинга постов для {channel.url}")
-        async for post in client.iter_messages(
-            entity,
-            reverse=True,
-            offset_date=end_date  # это теперь верхняя граница, вчерашний конец
-        ):
+        async for post in client.iter_messages(entity, reverse=True, offset_date=end_date):
+
             if not post.date:
                 continue
             if post.date > end_date:
                 continue
             if post.date < start_date:
-                break  # т.к. идем от новых к старым, можно остановиться
+                break
+
 
             # --- Проверка на дубли ---
             exists = await sync_to_async(TelegramPost.objects.filter(
