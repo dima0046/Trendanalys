@@ -11,6 +11,7 @@ from PIL import Image
 from .models import TelegramChannel, TelegramPost, ParserLog
 from .views import model, vectorizer, predict_category
 from dotenv import load_dotenv
+from datetime import time
 
 load_dotenv()
 api_id = os.getenv("API_ID")
@@ -153,8 +154,9 @@ async def run_daily_parser_manual():
     channels = await sync_to_async(lambda: list(TelegramChannel.objects.filter(is_active=True)))()
     logger.info(f"Количество активных каналов: {len(channels)}")
     yesterday = timezone.now().date() - timedelta(days=1)
-    start_date = timezone.make_aware(datetime.combine(yesterday, datetime.min.time()))
-    end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    start_date = timezone.make_aware(datetime.combine(yesterday, time.min))  # 00:00:00
+    end_date = timezone.make_aware(datetime.combine(yesterday, time.max))    # 23:59:59.999999
     logger.info(f"Парсинг за период: {start_date} - {end_date}")
 
     for channel in channels:
