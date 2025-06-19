@@ -67,15 +67,8 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         combined_message = None
 
         logger.info(f"Начало парсинга постов для {channel.url}")
-        async for post in client.iter_messages(entity, reverse=True, offset_date=end_date):
-
-            if not post.date:
-                logger.info(f"ПОЛУЧЕН ПОСТ: id={post.id}, дата={post.date.isoformat()}")
-                continue
-            if post.date > end_date:
-                logger.debug(f"Пост {post.id} пропущен — раньше start_date: {post.date}")
-                continue
-            if post.date < start_date:
+        async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
+            if end_date and post.date and post.date > end_date:
                 logger.debug(f"Пост {post.id} пропущен — позже end_date: {post.date}")
                 break
 
