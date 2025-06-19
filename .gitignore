@@ -46,6 +46,7 @@ temp_data/
 
 # Trash
 trash_folder/
+tests/
 
 # Machine learning
 *.joblib
