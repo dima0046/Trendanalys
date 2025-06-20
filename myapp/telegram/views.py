@@ -1175,6 +1175,24 @@ async def telegram_daily_view(request):
 
     # Загружаем все посты в список
     posts_list = await sync_to_async(lambda: list(posts))()
+    print(f"posts_list length: {len(posts_list)}")  # Отладка
+
+    # Создание списка list_210 (топ-3 постов по vr_post по дням и каналам) с фильтрацией N/A
+    posts_by_channel_day = defaultdict(list)
+    for post in posts_list:
+        if post.message != 'N/A' and (post.category is None or post.category != 'N/A'):
+            date = post.date.strftime('%Y-%m-%d')
+            channel = post.channel.title
+            key = (date, channel)
+            posts_by_channel_day[key].append(post)
+    list_210 = []
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: float(x.vr_post or 0), reverse=True)[:3]
+        list_210.extend(top_posts)
+    print(f"list_210 length: {len(list_210)}")  # Отладка
+
+    # Создание списка list_all (полный список данных) без фильтрации для исходных данных
+    list_all = posts_list
 
     # Применение фильтра Топ 3 на уровне Python (если включён)
     if top3_filter:
@@ -1238,6 +1256,36 @@ async def telegram_daily_view(request):
     vr_by_day_data = {day: mean(vrs) for day, vrs in vr_by_day.items() if vrs}
     content_types_data = {content_type: (count / len(posts_list)) * 100 for content_type, count in content_types.items() if count > 0}
 
+    # Новые расчёты для charts.html
+    # 1. Процент категорий (на основе list_210)
+    category_counts = defaultdict(int)
+    total_posts_210 = len(list_210)
+    print(f"total_posts_210: {total_posts_210}")  # Отладка
+    for post in list_210:
+        category = post.category if post.category else 'N/A'
+        category_counts[category] += 1
+    category_counts = {cat: (count / total_posts_210 * 100) for cat, count in category_counts.items() if total_posts_210 > 0}
+    print(f"category_counts: {category_counts}")  # Отладка
+
+    # 2. Динамика VR post по категориям (на основе list_210)
+    vr_by_category_day = defaultdict(lambda: defaultdict(list))
+    for post in list_210:
+        date = post.date.strftime('%Y-%m-%d')
+        category = post.category if post.category else 'N/A'
+        vr_by_category_day[date][category].append(float(post.vr_post or 0))
+    vr_by_category_day = {date: dict(categories) for date, categories in vr_by_category_day.items()}
+    print(f"vr_by_category_day: {vr_by_category_day}")  # Отладка
+
+    # 3. Динамика постов по категориям (на основе list_210)
+    posts_by_category_day = defaultdict(lambda: defaultdict(int))
+    for post in list_210:
+        date = post.date.strftime('%Y-%m-%d')
+        category = post.category if post.category else 'N/A'
+        posts_by_category_day[date][category] += 1
+    posts_by_category_day = {date: dict(categories) for date, categories in posts_by_category_day.items()}
+    print(f"posts_by_category_day: {posts_by_category_day}")  # Отладка
+
+    # Обновление posts_by_channel_day для топ-3 (уже есть, оставляем как есть)
     posts_by_channel_day = defaultdict(list)
     for post in posts_list:
         date = post.date.strftime('%Y-%m-%d')
@@ -1289,7 +1337,11 @@ async def telegram_daily_view(request):
         'top_posts': top_posts_data,
         'expanded_post_id': expanded_post_id,
         'page_size': page_size,
-        'top3_filter': top3_filter,  # Добавляем состояние фильтра в контекст
+        'top3_filter': top3_filter,
+        # Новые данные для charts.html
+        'category_counts': json.dumps(category_counts),
+        'vr_by_category_day': json.dumps(vr_by_category_day),
+        'posts_by_category_day': json.dumps(posts_by_category_day),
     }
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
 

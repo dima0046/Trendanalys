@@ -3,274 +3,328 @@
 {% block title %}Аналитика Telegram | TrendWatcher{% endblock %}
 
 {% block content %}
-<style>
-    :root {
-        --primary: #6e45e2;
-        --secondary: #88d3ce;
-        --dark: #1a1a2e;
-        --light: #f8f9fa;
-        --accent: #ff7e5f;
-    }
-    
-    .chart-card {
-        border: none;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
-        height: 100%;
-    }
-    
-    .chart-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-    }
-    
-    .chart-card .card-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        color: white;
-        border-radius: 12px 12px 0 0 !important;
-        border: none;
-    }
-    
-    .chart-container {
-        position: relative;
-        height: 300px;
-        width: 100%;
-        margin-bottom: 10px;
-    }
-    
-    .top-posts-table {
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    
-    .top-posts-table thead th {
-        background-color: var(--primary);
-        color: white;
-        border: none;
-        font-weight: 500;
-    }
-    
-    .top-posts-table tbody tr:hover {
-        background-color: rgba(110, 69, 226, 0.05);
-    }
-    
-    @media (max-width: 768px) {
-        .chart-container {
-            height: 250px;
-        }
-        
-        .chart-card {
-            margin-bottom: 20px;
-        }
-    }
-</style>
 
-<div class="container-fluid px-4 py-4">
-    <div class="row mb-4">
-        <!-- Средний ER Post по дням недели -->
-        <div class="col-md-4">
-            <div class="chart-card card">
-                <div class="card-header">
-                    <h6 class="m-0"><i class="fas fa-chart-line me-2"></i>Средний ER Post</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="erByDayChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Количество публикаций по дням недели -->
-        <div class="col-md-4">
-            <div class="chart-card card">
-                <div class="card-header">
-                    <h6 class="m-0"><i class="fas fa-calendar-alt me-2"></i>Публикации по дням</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="publicationsByDayChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Распределение типов контента -->
-        <div class="col-md-4">
-            <div class="chart-card card">
-                <div class="card-header">
-                    <h6 class="m-0"><i class="fas fa-chart-pie me-2"></i>Типы контента</h6>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="contentTypesChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
+
     
-    <!-- Топ-3 постов -->
-    <div class="row">
-        <div class="col-12">
-            <div class="chart-card card">
-                <div class="card-header">
-                    <h6 class="m-0"><i class="fas fa-trophy me-2"></i>Топ-3 постов (по VR Post)</h6>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table top-posts-table">
-                            <thead>
+        
+        
+            
+                
+                    Процент категорий
+
+                
+
+                
+                    
+                        <canvas id="categoryChart"></canvas>
+                    
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Категория</th>
+                                <th>Процент</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cat, count in category_counts.items %}
                                 <tr>
-                                    <th><i class="far fa-calendar me-2"></i>Дата</th>
-                                    <th><i class="fas fa-users me-2"></i>Канал</th>
-                                    <th><i class="fas fa-hashtag me-2"></i>ID Поста</th>
-                                    <th><i class="far fa-comment me-2"></i>Сообщение</th>
-                                    <th><i class="fas fa-chart-bar me-2"></i>VR Post</th>
+                                    <td>{{ cat }}</td>
+                                    <td>{{ count|floatformat:2 }}%</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {% for post in top_posts %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+
+            
+
+        
+
+        
+        
+        
+            
+                
+                    Динамика типов контента
+
+                
+
+                
+                    
+                        <canvas id="contentTypeChart"></canvas>
+                    
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Тип контента</th>
+                                <th>Количество</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for content_type, count in content_types.items %}
                                 <tr>
-                                    <td>{{ post.date }}</td>
-                                    <td>{{ post.channel|default:"Не указано" }}</td>
-                                    <td>{{ post.post_id }}</td>
-                                    <td>{{ post.message|truncatechars:100 }}</td>
-                                    <td class="fw-bold">{{ post.vr_post|floatformat:2 }}</td>
+                                    <td>{{ content_type }}</td>
+                                    <td>{{ count }}</td>
                                 </tr>
-                                {% empty %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+
+            
+
+        
+
+        
+        
+        
+            
+                
+                    Количество публикаций
+
+                
+
+                
+                    
+                        <canvas id="publicationsChart"></canvas>
+                    
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Количество постов</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for date, count in publications_by_day.items %}
                                 <tr>
-                                    <td colspan="5" class="text-center py-4">
-                                        <i class="fas fa-info-circle me-2"></i>Нет данных для отображения
-                                    </td>
+                                    <td>{{ date }}</td>
+                                    <td>{{ count }}</td>
                                 </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+
+            
+
+        
+
+        
+        
+        
+            
+                
+                    Динамика VR post по категориям
+
+                
+
+                
+                    
+                        <canvas id="vrPostChart"></canvas>
+                    
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Категория</th>
+                                <th>Средний VRpost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for date, categories in vr_by_category_day.items %}
+                                {% for category, avg_vr in categories.items %}
+                                    <tr>
+                                        <td>{{ date }}</td>
+                                        <td>{{ category }}</td>
+                                        <td>{{ avg_vr|floatformat:2 }}</td>
+                                    </tr>
                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
 
-<script src="{% static 'js/chart.umd.min.js' %}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Проверка загрузки Chart.js
-    if (typeof Chart === 'undefined') {
-        console.error('Chart.js не загружен!');
-        return;
-    }
+            
 
-    // Данные из Django
-    const publicationsByDay = {{ publications_by_day|safe }};
-    const erByDay = {{ er_by_day|safe }};
-    const contentTypes = {{ content_types|safe }};
+        
+
+        
+        
+        
+            
+                
+                    Динамика постов по категориям
+
+                
+
+                
+                    
+                        <canvas id="categoryPostsChart"></canvas>
+                    
+
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Категория</th>
+                                <th>Количество постов</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for date, categories in posts_by_category_day.items %}
+                                {% for category, count in categories.items %}
+                                    <tr>
+                                        <td>{{ date }}</td>
+                                        <td>{{ category }}</td>
+                                        <td>{{ count }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                
+
+            
+
+        
+
     
-    const daysOfWeek = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Отладка: выведем данные в консоль
+        console.log("category_counts:", {{ category_counts|safe }});
+        console.log("content_types:", {{ content_types|safe }});
+        console.log("publications_by_day:", {{ publications_by_day|safe }});
+        console.log("vr_by_category_day:", {{ vr_by_category_day|safe }});
+        console.log("posts_by_category_day:", {{ posts_by_category_day|safe }});
 
-    // График 1: Средний ER Post по дням недели
-    new Chart(document.getElementById('erByDayChart'), {
-        type: 'line',
-        data: {
-            labels: daysOfWeek,
+        // Данные для графиков
+        const categoryData = {
+            labels: Object.keys({{ category_counts|safe }}),
             datasets: [{
-                label: 'Средний ER Post',
-                data: daysOfWeek.map(day => erByDay[day] || 0),
-                borderColor: 'rgba(110, 69, 226, 1)', // Используем --primary (#6e45e2)
-                backgroundColor: 'rgba(110, 69, 226, 0.2)', // Полупрозрачный --primary
-                borderWidth: 2,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    ticks: { color: '#666' }
-                },
-                x: { 
-                    grid: { display: false },
-                    ticks: { color: '#666' }
-                }
-            }
-        }
-    });
-
-    // График 2: Публикации по дням недели
-    new Chart(document.getElementById('publicationsByDayChart'), {
-        type: 'bar',
-        data: {
-            labels: daysOfWeek,
-            datasets: [{
-                label: 'Публикации',
-                data: daysOfWeek.map(day => publicationsByDay[day] || 0),
-                backgroundColor: 'rgba(136, 211, 206, 0.7)', // Используем --secondary (#88d3ce)
-                borderColor: 'rgba(136, 211, 206, 1)', // Полный --secondary
+                label: 'Процент категорий',
+                data: Object.values({{ category_counts|safe }}),
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
                 borderWidth: 1
             }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                    ticks: { color: '#666' }
-                },
-                x: { 
-                    grid: { display: false },
-                    ticks: { color: '#666' }
-                }
-            }
-        }
-    });
+        };
 
-    // График 3: Типы контента
-    new Chart(document.getElementById('contentTypesChart'), {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(contentTypes),
+        const contentTypeData = {
+            labels: Object.keys({{ content_types|safe }}),
             datasets: [{
-                data: Object.values(contentTypes),
-                backgroundColor: [
-                    'rgba(110, 69, 226, 0.7)', // --primary (#6e45e2)
-                    'rgba(136, 211, 206, 0.7)', // --secondary (#88d3ce)
-                    'rgba(255, 126, 95, 0.7)'   // --accent (#ff7e5f)
-                ],
-                borderColor: [
-                    'rgba(110, 69, 226, 1)',
-                    'rgba(136, 211, 206, 1)',
-                    'rgba(255, 126, 95, 1)'
-                ],
+                label: 'Количество',
+                data: Object.values({{ content_types|safe }}),
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderColor: 'rgba(153, 102, 255, 1)',
                 borderWidth: 1
             }]
-        },
-        options: {
-            maintainAspectRatio: false,
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#666' }
-                }
-            },
-            cutout: '70%'
+        };
+
+        const publicationsData = {
+            labels: Object.keys({{ publications_by_day|safe }}),
+            datasets: [{
+                label: 'Количество постов',
+                data: Object.values({{ publications_by_day|safe }}),
+                backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        };
+
+        const vrPostData = {
+            labels: [],
+            datasets: [{
+                label: 'Средний VRpost',
+                data: [],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+        const vrData = {{ vr_by_category_day|safe }};
+        for (let date in vrData) {
+            for (let category in vrData[date]) {
+                vrPostData.labels.push(`${date} - ${category}`);
+                vrPostData.datasets[0].data.push(vrData[date][category]);
+            }
         }
-    });
-});
-</script>
+
+        const categoryPostsData = {
+            labels: [],
+            datasets: [{
+                label: 'Количество постов',
+                data: [],
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        };
+        const postsData = {{ posts_by_category_day|safe }};
+        for (let date in postsData) {
+            for (let category in postsData[date]) {
+                categoryPostsData.labels.push(`${date} - ${category}`);
+                categoryPostsData.datasets[0].data.push(postsData[date][category]);
+            }
+        }
+
+        // Настройка графиков
+        new Chart(document.getElementById('categoryChart').getContext('2d'), {
+            type: 'pie',
+            data: categoryData,
+            options: { responsive: true }
+        });
+
+        new Chart(document.getElementById('contentTypeChart').getContext('2d'), {
+            type: 'bar',
+            data: contentTypeData,
+            options: { responsive: true }
+        });
+
+        new Chart(document.getElementById('publicationsChart').getContext('2d'), {
+            type: 'line',
+            data: publicationsData,
+            options: { responsive: true }
+        });
+
+        new Chart(document.getElementById('vrPostChart').getContext('2d'), {
+            type: 'bar',
+            data: vrPostData,
+            options: { responsive: true }
+        });
+
+        new Chart(document.getElementById('categoryPostsChart').getContext('2d'), {
+            type: 'bar',
+            data: categoryPostsData,
+            options: { responsive: true }
+        });
+    </script>
+
+    <style>
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 400px;
+            width: 600px;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #4F81BD;
+            color: white;
+        }
+    </style>
+
 {% endblock %}
