@@ -30,7 +30,9 @@
         
         <!-- Вкладка графиков -->
         <div class="tab-pane fade" id="charts-tab-content" role="tabpanel">
-            {% include 'myapp/telegram/charts.html' %}
+            {% block content %}
+                {% include 'myapp/telegram/charts.html' %}
+            {% endblock %}
         </div>
     </div>
 </div>

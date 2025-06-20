@@ -1330,19 +1330,21 @@ async def telegram_daily_view(request):
         'sort_direction': sort_direction,
         'unique_categories': unique_categories_in_data,
         'unique_categories_in_data': unique_categories_in_data,
-        'publications_by_day': json.dumps(dict(publications_by_day)),
-        'er_by_day': json.dumps(er_by_day_data),
-        'vr_by_day': json.dumps(vr_by_day_data),
-        'content_types': json.dumps(content_types_data),
+        'publications_by_day': dict(publications_by_day),  # Преобразуем в обычный словарь
+        'er_by_day': dict(er_by_day_data),  # Преобразуем в обычный словарь
+        'vr_by_day': dict(vr_by_day_data),  # Преобразуем в обычный словарь
+        'content_types': dict(content_types_data),  # Преобразуем в обычный словарь
         'top_posts': top_posts_data,
         'expanded_post_id': expanded_post_id,
         'page_size': page_size,
         'top3_filter': top3_filter,
-        # Новые данные для charts.html
-        'category_counts': json.dumps(category_counts),
-        'vr_by_category_day': json.dumps(vr_by_category_day),
-        'posts_by_category_day': json.dumps(posts_by_category_day),
+        # Новые данные для charts.html как словари
+        'category_counts': category_counts,  # Прямой словарь
+        'vr_by_category_day': vr_by_category_day,  # Прямой словарь
+        'posts_by_category_day': posts_by_category_day,  # Прямой словарь
     }
+    
+    print("Context:", context)
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
 
 

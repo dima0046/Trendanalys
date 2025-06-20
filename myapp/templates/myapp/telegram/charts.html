@@ -4,327 +4,383 @@
 
 {% block content %}
 
-
-
-    
-        
-        
-            
-                
-                    Процент категорий
-
-                
-
-                
-                    
-                        <canvas id="categoryChart"></canvas>
-                    
-
-                    <table class="table table-striped">
-                        <thead>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-7">
+            <div class="chart-container">
+                <h3>Процент категорий</h3>
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <h3>Таблица: Процент категорий</h3>
+            <table id="category-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Категория</th>
+                        <th>Процент</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if category_counts %}
+                        {% for cat, count in category_counts.items %}
                             <tr>
-                                <th>Категория</th>
-                                <th>Процент</th>
+                                <td>{{ cat }}</td>
+                                <td>{{ count|floatformat:2 }}%</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for cat, count in category_counts.items %}
-                                <tr>
-                                    <td>{{ cat }}</td>
-                                    <td>{{ count|floatformat:2 }}%</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">Нет данных</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button class="btn btn-primary copy-btn" data-table="category-table">Копировать</button>
+        </div>
+    </div>
 
-            
-
-        
-
-        
-        
-        
-            
-                
-                    Динамика типов контента
-
-                
-
-                
-                    
-                        <canvas id="contentTypeChart"></canvas>
-                    
-
-                    <table class="table table-striped">
-                        <thead>
+    <div class="row">
+        <div class="col-md-7">
+            <div class="chart-container">
+                <h3>Динамика типов контента</h3>
+                <canvas id="contentTypeChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <h3>Таблица: Динамика типов контента</h3>
+            <table id="content-type-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Тип контента</th>
+                        <th>Количество</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if content_types %}
+                        {% for content_type, count in content_types.items %}
                             <tr>
-                                <th>Тип контента</th>
-                                <th>Количество</th>
+                                <td>{{ content_type }}</td>
+                                <td>{{ count }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for content_type, count in content_types.items %}
-                                <tr>
-                                    <td>{{ content_type }}</td>
-                                    <td>{{ count }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">Нет данных</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button class="btn btn-primary copy-btn" data-table="content-type-table">Копировать</button>
+        </div>
+    </div>
 
-            
-
-        
-
-        
-        
-        
-            
-                
-                    Количество публикаций
-
-                
-
-                
-                    
-                        <canvas id="publicationsChart"></canvas>
-                    
-
-                    <table class="table table-striped">
-                        <thead>
+    <div class="row">
+        <div class="col-md-7">
+            <div class="chart-container">
+                <h3>Количество публикаций</h3>
+                <canvas id="publicationsChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <h3>Таблица: Количество публикаций</h3>
+            <table id="publications-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Количество постов</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if publications_by_day %}
+                        {% for date, count in publications_by_day.items %}
                             <tr>
-                                <th>Дата</th>
-                                <th>Количество постов</th>
+                                <td>{{ date }}</td>
+                                <td>{{ count }}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for date, count in publications_by_day.items %}
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="2">Нет данных</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button class="btn btn-primary copy-btn" data-table="publications-table">Копировать</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="chart-container">
+                <h3>Динамика VR post по категориям</h3>
+                <canvas id="vrPostChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <h3>Таблица: Динамика VR post по категориям</h3>
+            <table id="vr-post-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Категория</th>
+                        <th>Средний VRpost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if vr_by_category_day %}
+                        {% for date, categories in vr_by_category_day.items %}
+                            {% for category, avg_vr in categories.items %}
                                 <tr>
                                     <td>{{ date }}</td>
+                                    <td>{{ category }}</td>
+                                    <td>{{ avg_vr|floatformat:2 }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3">Нет данных</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button class="btn btn-primary copy-btn" data-table="vr-post-table">Копировать</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="chart-container">
+                <h3>Динамика постов по категориям</h3>
+                <canvas id="categoryPostsChart"></canvas>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <h3>Таблица: Динамика постов по категориям</h3>
+            <table id="category-posts-table" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Категория</th>
+                        <th>Количество постов</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if posts_by_category_day %}
+                        {% for date, categories in posts_by_category_day.items %}
+                            {% for category, count in categories.items %}
+                                <tr>
+                                    <td>{{ date }}</td>
+                                    <td>{{ category }}</td>
                                     <td>{{ count }}</td>
                                 </tr>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                
+                        {% endfor %}
+                    {% else %}
+                        <tr><td colspan="3">Нет данных</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            <button class="btn btn-primary copy-btn" data-table="category-posts-table">Копировать</button>
+        </div>
+    </div>
+</div>
 
-            
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Отладка: выведем данные в консоль
+    console.log("category_counts:", {{ category_counts|safe }});
+    console.log("content_types:", {{ content_types|safe }});
+    console.log("publications_by_day:", {{ publications_by_day|safe }});
+    console.log("vr_by_category_day:", {{ vr_by_category_day|safe }});
+    console.log("posts_by_category_day:", {{ posts_by_category_day|safe }});
 
-        
+    // Данные для графиков
+    const categoryData = {
+        labels: Object.keys({{ category_counts|safe }} || {}),
+        datasets: [{
+            label: 'Процент категорий',
+            data: Object.values({{ category_counts|safe }} || {}),
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    };
 
-        
-        
-        
-            
-                
-                    Динамика VR post по категориям
+    const contentTypeData = {
+        labels: Object.keys({{ content_types|safe }} || {}),
+        datasets: [{
+            label: 'Количество',
+            data: Object.values({{ content_types|safe }} || {}),
+            backgroundColor: 'rgba(153, 102, 255, 0.2)',
+            borderColor: 'rgba(153, 102, 255, 1)',
+            borderWidth: 1
+        }]
+    };
 
-                
+    const publicationsData = {
+        labels: Object.keys({{ publications_by_day|safe }} || {}),
+        datasets: [{
+            label: 'Количество постов',
+            data: Object.values({{ publications_by_day|safe }} || {}),
+            backgroundColor: 'rgba(255, 159, 64, 0.2)',
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 1
+        }]
+    };
 
-                
-                    
-                        <canvas id="vrPostChart"></canvas>
-                    
+    const vrPostData = {
+        labels: [],
+        datasets: []
+    };
+    const vrData = {{ vr_by_category_day|safe }} || {};
+    const colors = ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)', 'rgba(75, 192, 192, 1)'];
+    let index = 0;
+    for (let date in vrData) {
+        if (!vrPostData.labels.includes(date)) {
+            vrPostData.labels.push(date);
+        }
+        for (let category in vrData[date]) {
+            if (!vrPostData.datasets.some(ds => ds.label === category)) {
+                vrPostData.datasets.push({
+                    label: category,
+                    data: [],
+                    borderColor: colors[index % colors.length],
+                    backgroundColor: colors[index % colors.length],
+                    borderWidth: 2,
+                    fill: false
+                });
+                index++;
+            }
+            const dataset = vrPostData.datasets.find(ds => ds.label === category);
+            dataset.data.push(vrData[date][category].reduce((a, b) => a + b, 0) / vrData[date][category].length); // Среднее значение
+        }
+    }
 
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Категория</th>
-                                <th>Средний VRpost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for date, categories in vr_by_category_day.items %}
-                                {% for category, avg_vr in categories.items %}
-                                    <tr>
-                                        <td>{{ date }}</td>
-                                        <td>{{ category }}</td>
-                                        <td>{{ avg_vr|floatformat:2 }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
+    const categoryPostsData = {
+        labels: [],
+        datasets: [{
+            label: 'Количество постов',
+            data: [],
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+        }]
+    };
+    const postsData = {{ posts_by_category_day|safe }} || {};
+    for (let date in postsData) {
+        for (let category in postsData[date]) {
+            categoryPostsData.labels.push(`${date} - ${category}`);
+            categoryPostsData.datasets[0].data.push(postsData[date][category]);
+        }
+    }
 
-            
-
-        
-
-        
-        
-        
-            
-                
-                    Динамика постов по категориям
-
-                
-
-                
-                    
-                        <canvas id="categoryPostsChart"></canvas>
-                    
-
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Категория</th>
-                                <th>Количество постов</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for date, categories in posts_by_category_day.items %}
-                                {% for category, count in categories.items %}
-                                    <tr>
-                                        <td>{{ date }}</td>
-                                        <td>{{ category }}</td>
-                                        <td>{{ count }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                
-
-            
-
-        
-
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Отладка: выведем данные в консоль
-        console.log("category_counts:", {{ category_counts|safe }});
-        console.log("content_types:", {{ content_types|safe }});
-        console.log("publications_by_day:", {{ publications_by_day|safe }});
-        console.log("vr_by_category_day:", {{ vr_by_category_day|safe }});
-        console.log("posts_by_category_day:", {{ posts_by_category_day|safe }});
-
-        // Данные для графиков
-        const categoryData = {
-            labels: Object.keys({{ category_counts|safe }}),
-            datasets: [{
-                label: 'Процент категорий',
-                data: Object.values({{ category_counts|safe }}),
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            }]
-        };
-
-        const contentTypeData = {
-            labels: Object.keys({{ content_types|safe }}),
-            datasets: [{
-                label: 'Количество',
-                data: Object.values({{ content_types|safe }}),
-                backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1
-            }]
-        };
-
-        const publicationsData = {
-            labels: Object.keys({{ publications_by_day|safe }}),
-            datasets: [{
-                label: 'Количество постов',
-                data: Object.values({{ publications_by_day|safe }}),
-                backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                borderColor: 'rgba(255, 159, 64, 1)',
-                borderWidth: 1
-            }]
-        };
-
-        const vrPostData = {
-            labels: [],
-            datasets: [{
-                label: 'Средний VRpost',
-                data: [],
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        };
-        const vrData = {{ vr_by_category_day|safe }};
-        for (let date in vrData) {
-            for (let category in vrData[date]) {
-                vrPostData.labels.push(`${date} - ${category}`);
-                vrPostData.datasets[0].data.push(vrData[date][category]);
+    // Настройка графиков с настройками размера
+    const chartOptions = {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                    font: {
+                        size: 12
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    font: {
+                        size: 12
+                    }
+                }
+            },
+            y: {
+                ticks: {
+                    font: {
+                        size: 12
+                    }
+                }
             }
         }
+    };
 
-        const categoryPostsData = {
-            labels: [],
-            datasets: [{
-                label: 'Количество постов',
-                data: [],
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 1
-            }]
-        };
-        const postsData = {{ posts_by_category_day|safe }};
-        for (let date in postsData) {
-            for (let category in postsData[date]) {
-                categoryPostsData.labels.push(`${date} - ${category}`);
-                categoryPostsData.datasets[0].data.push(postsData[date][category]);
-            }
-        }
+    new Chart(document.getElementById('categoryChart').getContext('2d'), {
+        type: 'pie',
+        data: categoryData,
+        options: chartOptions
+    });
 
-        // Настройка графиков
-        new Chart(document.getElementById('categoryChart').getContext('2d'), {
-            type: 'pie',
-            data: categoryData,
-            options: { responsive: true }
+    new Chart(document.getElementById('contentTypeChart').getContext('2d'), {
+        type: 'bar',
+        data: contentTypeData,
+        options: chartOptions
+    });
+
+    new Chart(document.getElementById('publicationsChart').getContext('2d'), {
+        type: 'bar',
+        data: publicationsData,
+        options: chartOptions
+    });
+
+    new Chart(document.getElementById('vrPostChart').getContext('2d'), {
+        type: 'line',
+        data: vrPostData,
+        options: chartOptions
+    });
+
+    new Chart(document.getElementById('categoryPostsChart').getContext('2d'), {
+        type: 'bar',
+        data: categoryPostsData,
+        options: chartOptions
+    });
+
+    // Функция копирования таблицы в буфер обмена
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const tableId = this.getAttribute('data-table');
+            let table = document.getElementById(tableId);
+            if (!table) return;
+            let text = '';
+            const headers = table.querySelectorAll('th');
+            const rows = table.querySelectorAll('tr');
+            headers.forEach(header => {
+                text += `${header.textContent}\t`;
+            });
+            text += '\n';
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach(cell => {
+                    text += `${cell.textContent}\t`;
+                });
+                text += '\n';
+            });
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Таблица скопирована в буфер обмена!');
+            }).catch(err => {
+                console.error('Ошибка копирования:', err);
+            });
         });
+    });
+</script>
 
-        new Chart(document.getElementById('contentTypeChart').getContext('2d'), {
-            type: 'bar',
-            data: contentTypeData,
-            options: { responsive: true }
-        });
-
-        new Chart(document.getElementById('publicationsChart').getContext('2d'), {
-            type: 'line',
-            data: publicationsData,
-            options: { responsive: true }
-        });
-
-        new Chart(document.getElementById('vrPostChart').getContext('2d'), {
-            type: 'bar',
-            data: vrPostData,
-            options: { responsive: true }
-        });
-
-        new Chart(document.getElementById('categoryPostsChart').getContext('2d'), {
-            type: 'bar',
-            data: categoryPostsData,
-            options: { responsive: true }
-        });
-    </script>
-
-    <style>
-        .chart-container {
-            position: relative;
-            margin: auto;
-            height: 400px;
-            width: 600px;
-        }
-        table {
-            width: 100%;
-            margin-top: 20px;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #4F81BD;
-            color: white;
-        }
-    </style>
+<style>
+    .chart-container {
+        position: relative;
+        margin: auto;
+        height: 300px;
+        width: 500px;
+    }
+    table {
+        width: 100%;
+        margin-top: 20px;
+    }
+    th, td {
+        padding: 8px;
+        text-align: left;
+    }
+    th {
+        background-color: #4F81BD;
+        color: white;
+    }
+    .btn {
+        margin-top: 10px;
+    }
+</style>
 
 {% endblock %}
