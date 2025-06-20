@@ -1269,12 +1269,24 @@ async def telegram_daily_view(request):
 
     # 2. Динамика VR post по категориям (на основе list_210)
     vr_by_category_day = defaultdict(lambda: defaultdict(list))
+    vr_by_category_day_avg = defaultdict(dict)  # Новый словарь для средних значений
+    
     for post in list_210:
         date = post.date.strftime('%Y-%m-%d')
         category = post.category if post.category else 'N/A'
-        vr_by_category_day[date][category].append(float(post.vr_post or 0))
+        vr_value = float(post.vr_post or 0)
+        vr_by_category_day[date][category].append(vr_value)
+
+    # Вычисляем средние значения
+    for date, categories in vr_by_category_day.items():
+        for category, values in categories.items():
+            vr_by_category_day_avg[date][category] = sum(values) / len(values) if values else 0
+
     vr_by_category_day = {date: dict(categories) for date, categories in vr_by_category_day.items()}
+    vr_by_category_day_avg = {date: dict(categories) for date, categories in vr_by_category_day_avg.items()}
+
     print(f"vr_by_category_day: {vr_by_category_day}")  # Отладка
+    print(f"vr_by_category_day_avg: {vr_by_category_day_avg}")  # Отладка
 
     # 3. Динамика постов по категориям (на основе list_210)
     posts_by_category_day = defaultdict(lambda: defaultdict(int))
@@ -1317,6 +1329,25 @@ async def telegram_daily_view(request):
         if day not in vr_by_day_data:
             vr_by_day_data[day] = 0
 
+    # Пагинация
+    page = request.POST.get('page', request.GET.get('page', '1'))
+    page = int(page)
+
+    # Пример обработки publications_by_day
+    publications_by_day_list = sorted(publications_by_day.items(), key=lambda x: x[0])
+    paginator_publications = Paginator(publications_by_day_list, 7)  # 7 дней в неделе
+    publications_by_day_paginated = dict(paginator_publications.page(page).object_list)
+
+    # Пример обработки vr_by_category_day
+    vr_by_category_day_list = sorted(vr_by_category_day.items(), key=lambda x: x[0])
+    paginator_vr = Paginator(vr_by_category_day_list, 7)  # 7 дней в неделе
+    vr_by_category_day_paginated = dict(paginator_vr.page(page).object_list)
+
+    # Пример обработки posts_by_category_day
+    posts_by_category_day_list = sorted(posts_by_category_day.items(), key=lambda x: x[0])
+    paginator_posts = Paginator(posts_by_category_day_list, 7)  # 7 дней в неделе
+    posts_by_category_day_paginated = dict(paginator_posts.page(page).object_list)
+
     context = {
         'form': form,
         'parsed_data': page_obj,
@@ -1330,21 +1361,21 @@ async def telegram_daily_view(request):
         'sort_direction': sort_direction,
         'unique_categories': unique_categories_in_data,
         'unique_categories_in_data': unique_categories_in_data,
-        'publications_by_day': dict(publications_by_day),  # Преобразуем в обычный словарь
-        'er_by_day': dict(er_by_day_data),  # Преобразуем в обычный словарь
-        'vr_by_day': dict(vr_by_day_data),  # Преобразуем в обычный словарь
-        'content_types': dict(content_types_data),  # Преобразуем в обычный словарь
+        'publications_by_day': publications_by_day_paginated,
+        'er_by_day': dict(er_by_day_data),
+        'vr_by_day': dict(vr_by_day_data),
+        'content_types': dict(content_types_data),
         'top_posts': top_posts_data,
         'expanded_post_id': expanded_post_id,
         'page_size': page_size,
         'top3_filter': top3_filter,
-        # Новые данные для charts.html как словари
-        'category_counts': category_counts,  # Прямой словарь
-        'vr_by_category_day': vr_by_category_day,  # Прямой словарь
-        'posts_by_category_day': posts_by_category_day,  # Прямой словарь
+        # Пагинированные данные для charts.html
+        'category_counts': category_counts,
+        'vr_by_category_day': vr_by_category_day_avg,  # Используем вычисленные средние значения
+        'posts_by_category_day': posts_by_category_day_paginated,
     }
-    
-    print("Context:", context)
+
+    #print("Context:", context)
     return await sync_to_async(render)(request, 'myapp/telegram/telegram_daily.html', context)
 
 
