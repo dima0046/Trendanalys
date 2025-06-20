@@ -12,6 +12,8 @@ from .models import TelegramChannel, TelegramPost, ParserLog
 from .views import model, vectorizer, predict_category
 from dotenv import load_dotenv
 from datetime import time
+import datetime
+from zoneinfo import ZoneInfo
 
 load_dotenv()
 api_id = os.getenv("API_ID")
@@ -65,11 +67,11 @@ async def fetch_daily_telegram_data(channel, start_date, end_date):
         combined_message = None
 
         logger.info(f"Начало парсинга постов для {channel.url}")
-        async for post in client.iter_messages(entity, reverse=False, offset_date=start_date):
-            if not post.date or post.date < start_date:
-                continue
-            if end_date and post.date > end_date:
+        async for post in client.iter_messages(entity, reverse=True, offset_date=start_date):
+            if end_date and post.date and post.date > end_date:
+                logger.debug(f"Пост {post.id} пропущен — позже end_date: {post.date}")
                 break
+
 
             # --- Проверка на дубли ---
             exists = await sync_to_async(TelegramPost.objects.filter(
@@ -153,10 +155,13 @@ async def run_daily_parser_manual():
     logger.info("Запуск run_daily_parser_manual")
     channels = await sync_to_async(lambda: list(TelegramChannel.objects.filter(is_active=True)))()
     logger.info(f"Количество активных каналов: {len(channels)}")
-    yesterday = timezone.now().date() - timedelta(days=1)
 
-    start_date = timezone.make_aware(datetime.combine(yesterday, time.min))  # 00:00:00
-    end_date = timezone.make_aware(datetime.combine(yesterday, time.max))    # 23:59:59.999999
+    moscow = ZoneInfo("Europe/Moscow")
+    today = datetime.datetime.now(moscow)
+    yesterday = today - timedelta(days=1)
+
+    start_date = datetime.datetime.combine(yesterday.date(), time.min, tzinfo=moscow)
+    end_date = datetime.datetime.combine(yesterday.date(), time.max, tzinfo=moscow)
     logger.info(f"Парсинг за период: {start_date} - {end_date}")
 
     for channel in channels:
