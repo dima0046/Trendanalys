@@ -57,3 +57,4 @@ project_structure.py
 project_structure.txt
 session_name.session
 myapp/static/media/avatars/
+tests/test_time_date.py

@@ -1350,147 +1350,76 @@ async def export_to_excel_daily(request):
     min_date = min(dates).strftime('%Y%m%d')
     max_date = max(dates).strftime('%Y%m%d')
 
-    # Определяем valid_posts до использования
-    valid_posts = [post for post in posts_list if post.category != 'N/A']
-    total_valid_posts = len(valid_posts)
+    # Создание списка list_210 (топ-3 постов по vr_post по дням и каналам) с фильтрацией N/A
+    posts_by_channel_day = defaultdict(list)
+    for post in posts_list:
+        if post.message != 'N/A' and (post.category is None or post.category != 'N/A'):
+            date = post.date.strftime('%Y-%m-%d')
+            channel = post.channel.title
+            key = (date, channel)
+            posts_by_channel_day[key].append(post)
+    list_210 = []
+    for (date, channel), posts in posts_by_channel_day.items():
+        top_posts = sorted(posts, key=lambda x: float(x.vr_post or 0), reverse=True)[:3]
+        list_210.extend(top_posts)
+
+    # Создание списка list_all (полный список данных) без фильтрации для исходных данных
+    list_all = posts_list
 
     # Sheet: Combined Results (First sheet)
-    combined_sheet = workbook.create_sheet('Результаты расчетов')
-    # Styling for table names
-    combined_sheet['A1'] = 'Количество публикаций по дням'
+    combined_sheet = workbook.create_sheet('Расчетные данные')
+    # Таблица 1: Процент категорий (на основе list_210)
+    combined_sheet['A1'] = 'Процент категорий'
     combined_sheet['A1'].font = Font(bold=True)
     combined_sheet['A1'].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['День недели', 'Количество публикаций'])
-    publications_by_day = defaultdict(int)
-    days_map = {
-        'Понедельник': 'Monday',
-        'Вторник': 'Tuesday',
-        'Среда': 'Wednesday',
-        'Четверг': 'Thursday',
-        'Пятница': 'Friday',
-        'Суббота': 'Saturday',
-        'Воскресенье': 'Sunday'
-    }
-    for post in valid_posts:
-        day_name = post.date.strftime('%A')
-        for ru_day, en_day in days_map.items():
-            if en_day == day_name:
-                publications_by_day[ru_day] += 1
-    for day, count in publications_by_day.items():
-        combined_sheet.append([day, count])
-    combined_sheet.append([])  # Empty row as separator
-
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Среднее значение ER post по дням'
-    combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
-    combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['День недели', 'Средний ER Post'])
-    er_by_day = defaultdict(list)
-    for post in valid_posts:
-        day_name = post.date.strftime('%A')
-        for ru_day, en_day in days_map.items():
-            if en_day == day_name:
-                er_by_day[ru_day].append(float(post.er_post or 0))
-    for day, ers in er_by_day.items():
-        combined_sheet.append([day, statistics.mean(ers) if ers else 0])
-    combined_sheet.append([])  # Empty row as separator
-
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Среднее значение VR post по дням'
-    combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
-    combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['День недели', 'Средний VR Post'])
-    vr_by_day = defaultdict(list)
-    for post in valid_posts:
-        day_name = post.date.strftime('%A')
-        for ru_day, en_day in days_map.items():
-            if en_day == day_name:
-                vr_by_day[ru_day].append(float(post.vr_post or 0))
-    for day, vrs in vr_by_day.items():
-        combined_sheet.append([day, statistics.mean(vrs) if vrs else 0])
-    combined_sheet.append([])  # Empty row as separator
-
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Тип контента'
-    combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
-    combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Тип контента', 'Процентное соотношение'])
-    content_types = defaultdict(int)
-    for post in valid_posts:
-        content_type = post.post_type.lower() if post.post_type else 'unknown'
-        if content_type in ['image', 'video', 'text']:
-            content_types[content_type] += 1
-    for content_type, count in content_types.items():
-        percentage = (count / total_valid_posts) * 100
-        combined_sheet.append([content_type, percentage])
-    combined_sheet.append([])  # Empty row as separator
-
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Процент категорий в Топ-3'
-    combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
-    combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
     combined_sheet.append(['Категория', 'Количество постов', 'Процент'])
-    category_counts_top3 = defaultdict(int)
-    total_top3_posts = 0
-    posts_by_channel_day = defaultdict(list)
-    for post in valid_posts:
-        date = post.date.strftime('%Y-%m-%d')
-        channel = post.channel.title
-        key = (date, channel)
-        posts_by_channel_day[key].append({
-            'post_id': post.post_id,
-            'link': f"https://t.me/c/{post.channel.id}/{post.post_id}",
-            'category': post.category if post.category else 'N/A',
-            'message': post.message if post.message else 'N/A',
-            'vr_post': float(post.vr_post or 0)
-        })
-    for (date, channel), posts in posts_by_channel_day.items():
-        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
-        for post in top_posts:
-            category = post['category']
-            category_counts_top3[category] += 1
-            total_top3_posts += 1
-    for cat, count in category_counts_top3.items():
-        percentage = (count / total_top3_posts * 100) if total_top3_posts > 0 else 0
+    category_counts = defaultdict(int)
+    total_posts_210 = len(list_210)
+    for post in list_210:
+        category = post.category
+        category_counts[category] += 1
+    for cat, count in category_counts.items():
+        percentage = (count / total_posts_210 * 100) if total_posts_210 > 0 else 0
         combined_sheet.append([cat, count, f"{percentage:.2f}%"])
     combined_sheet.append([])  # Empty row as separator
 
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика типов контента по дням'
+    # Таблица 2: Динамика типов контента (на основе list_all, с фильтрацией N/A)
+    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика типов контента'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Дата', 'Тип контента', 'Количество'])
-    content_by_day = defaultdict(lambda: defaultdict(int))
-    for post in valid_posts:
-        date = post.date.strftime('%Y-%m-%d')
-        content_type = post.post_type.lower() if post.post_type else 'unknown'
-        if content_type in ['image', 'video', 'text']:
-            content_by_day[date][content_type] += 1
-    for date, types in content_by_day.items():
-        for content_type, count in types.items():
-            combined_sheet.append([date, content_type, count])
+    combined_sheet.append(['Тип контента', 'Количество'])
+    content_types = defaultdict(int)
+    for post in list_all:
+        if post.message != 'N/A' and (post.category is None or post.category != 'N/A'):
+            content_type = post.post_type.lower() if post.post_type else 'unknown'
+            if content_type in ['image', 'video', 'text']:
+                content_types[content_type] += 1
+    for content_type, count in content_types.items():
+        combined_sheet.append([content_type, count])
     combined_sheet.append([])  # Empty row as separator
 
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика типов контента по категориям'
+    # Таблица 3: Количество публикаций (на основе list_all)
+    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Количество публикаций'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Дата', 'Категория', 'Тип контента', 'Количество'])
-    content_by_category_day = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
-    for post in valid_posts:
+    combined_sheet.append(['Дата', 'Количество постов'])
+    publications_by_day = defaultdict(int)
+    for post in list_all:
         date = post.date.strftime('%Y-%m-%d')
-        category = post.category if post.category else 'N/A'
-        content_type = post.post_type.lower() if post.post_type else 'unknown'
-        if content_type in ['image', 'video', 'text']:
-            content_by_category_day[date][category][content_type] += 1
-    for date, categories in content_by_category_day.items():
-        for category, types in categories.items():
-            for content_type, count in types.items():
-                combined_sheet.append([date, category, content_type, count])
+        publications_by_day[date] += 1
+    for date, count in publications_by_day.items():
+        combined_sheet.append([date, count])
     combined_sheet.append([])  # Empty row as separator
 
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика VRpost по категориям'
+    # Таблица 4: Динамика VR post по категориям (на основе list_210)
+    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика постов по значению VR post по категориям'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
     combined_sheet.append(['Дата', 'Категория', 'Средний VRpost'])
     vr_by_category_day = defaultdict(lambda: defaultdict(list))
-    for post in valid_posts:
+    for post in list_210:
         date = post.date.strftime('%Y-%m-%d')
-        category = post.category if post.category else 'N/A'
+        category = post.category
         vr_by_category_day[date][category].append(float(post.vr_post or 0))
     for date, categories in vr_by_category_day.items():
         for category, vrs in categories.items():
@@ -1498,40 +1427,19 @@ async def export_to_excel_daily(request):
             combined_sheet.append([date, category, avg_vr])
     combined_sheet.append([])  # Empty row as separator
 
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика количества постов по категориям'
+    # Таблица 5: Динамика постов по категориям (на основе list_210)
+    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика постов по категориям'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
     combined_sheet.append(['Дата', 'Категория', 'Количество постов'])
     posts_by_category_day = defaultdict(lambda: defaultdict(int))
-    for post in valid_posts:
+    for post in list_210:
         date = post.date.strftime('%Y-%m-%d')
-        category = post.category if post.category else 'N/A'
+        category = post.category
         posts_by_category_day[date][category] += 1
     for date, categories in posts_by_category_day.items():
         for category, count in categories.items():
             combined_sheet.append([date, category, count])
-    combined_sheet.append([])  # Empty row as separator
-
-    combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'ТОП-25 публикаций по категориям'
-    combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
-    combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
-    posts_by_category = defaultdict(list)
-    for post in valid_posts:
-        category = post.category if post.category else 'N/A'
-        posts_by_category[category].append({
-            'date': post.date.strftime('%Y-%m-%d'),
-            'title': post.channel.title,
-            'post_id': post.post_id,
-            'link': f"https://t.me/c/{post.channel.id}/{post.post_id}",
-            'category': category,
-            'message': post.message if post.message else 'N/A',
-            'vr_post': float(post.vr_post or 0)
-        })
-    for category, posts in posts_by_category.items():
-        top_25_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:25]
-        for post in top_25_posts:
-            combined_sheet.append([post['date'], post['title'], post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
 
     # Apply borders to all cells in combined_sheet
     for row in combined_sheet.rows:
@@ -1539,80 +1447,60 @@ async def export_to_excel_daily(request):
             cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     # Apply header coloring for each table
     for i, row in enumerate(combined_sheet.rows):
-        if any(cell.value in ['День недели', 'Средний ER Post', 'Средний VR Post', 'Тип контента', 'Категория', 'Дата', 'Количество постов'] for cell in row):
+        if any(cell.value in ['Процент категорий', 'Динамика типов контента', 'Количество публикаций', 'Динамика постов по значению VR post по категориям', 'Динамика постов по категориям'] for cell in row):
             for cell in row:
                 cell.font = Font(bold=True)
                 cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
 
-    # Sheet: Top 3 Posts by Channel and Day
-    sheet6 = workbook.create_sheet('Топ-3 постов по дню')
-    sheet6['A1'] = 'Дата'
-    sheet6['B1'] = 'Канал'
-    sheet6['C1'] = 'ID Поста'
-    sheet6['D1'] = 'Ссылка'
-    sheet6['E1'] = 'Категория'
-    sheet6['F1'] = 'Сообщение'
-    sheet6['G1'] = 'VR Post'
-    for cell in sheet6[1]:
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    posts_by_channel_day = defaultdict(list)
-    for post in valid_posts:
-        date = post.date.strftime('%Y-%m-%d')
-        channel = post.channel.title
-        key = (date, channel)
-        posts_by_channel_day[key].append({
-            'post_id': post.post_id,
-            'link': f"https://t.me/c/{post.channel.id}/{post.post_id}",
-            'category': post.category if post.category else 'N/A',
-            'message': post.message if post.message else 'N/A',
-            'vr_post': float(post.vr_post or 0)
-        })
-    for (date, channel), posts in posts_by_channel_day.items():
-        top_posts = sorted(posts, key=lambda x: x['vr_post'], reverse=True)[:3]
-        for post in top_posts:
-            sheet6.append([date, channel, post['post_id'], post['link'], post['category'], post['message'], post['vr_post']])
-    # Apply borders to all cells in sheet6
-    for row in sheet6.rows:
-        for cell in row:
-            cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-
-    # Sheet: Original Data
-    sheet1 = workbook.create_sheet('Исходные данные')
-    headers = ['Канал', 'ID Канала', 'ID Поста', 'Дата', 'Сообщение', 'Категория', 'Ссылка', 'Просмотров', 'Реакции', 'Пересылки', 'Комментарии']
-    for col, header in enumerate(headers, 1):
-        cell = sheet1.cell(row=1, column=col, value=header)
-        cell.font = Font(bold=True)
-        cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    # Расчет процента всех категорий на основе valid_posts
-    category_counts = defaultdict(int)
-    for post in valid_posts:
-        category = post.category if post.category else 'N/A'
-        category_counts[category] += 1
-    category_percentages = {cat: (count / total_valid_posts * 100) for cat, count in category_counts.items() if cat != 'N/A'}
-    for post in posts_list:  # Оставляем все посты в исходных данных
-        row = [
+    # Sheet 2: Top-3
+    sheet2 = workbook.create_sheet('Топ-3')
+    sheet2['A1'] = 'Топ-3 постов по категориям по VRpost'
+    sheet2['A1'].font = Font(bold=True)
+    sheet2['A1'].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    sheet2.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
+    for post in list_210:
+        sheet2.append([
+            post.date.strftime('%Y-%m-%d'),
             post.channel.title,
-            post.channel.id,
             post.post_id,
-            post.date.strftime('%Y-%m-%d %H:%M:%S'),
-            post.message if post.message else 'N/A',
-            post.category if post.category else 'N/A',
             f"https://t.me/c/{post.channel.id}/{post.post_id}",
-            post.views if post.views else 0,
-            post.reactions if post.reactions else 0,
-            post.forwards if post.forwards else 0,
-            post.comments_count if post.comments_count else 0
-        ]
-        sheet1.append(row)
-    # Добавляем строку с процентами категорий в конец Sheet 1
-    sheet1.append([''] * (len(headers) - 1) + ['Процент категорий'])
-    for cat, percent in category_percentages.items():
-        sheet1.append([''] * (len(headers) - 1) + [f"{cat}: {percent:.2f}%"])
-    # Apply borders to all cells in sheet1
-    for row in sheet1.rows:
+            post.category,
+            post.message,
+            float(post.vr_post or 0)
+        ])
+    # Apply borders to all cells in sheet2
+    for row in sheet2.rows:
         for cell in row:
             cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    # Apply header coloring
+    for cell in sheet2[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+
+    # Sheet 3: Исходные данные
+    sheet3 = workbook.create_sheet('Исходные данные')
+    sheet3['A1'] = 'Исходные данные'
+    sheet3['A1'].font = Font(bold=True)
+    sheet3['A1'].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    sheet3.append(['Дата', 'Канал', 'ID Поста', 'Ссылка', 'Категория', 'Сообщение', 'VR Post'])
+    for post in list_all:
+        sheet3.append([
+            post.date.strftime('%Y-%m-%d'),
+            post.channel.title,
+            post.post_id,
+            f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            post.category if post.category else 'N/A',
+            post.message if post.message else 'N/A',
+            float(post.vr_post or 0)
+        ])
+    # Apply borders to all cells in sheet3
+    for row in sheet3.rows:
+        for cell in row:
+            cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+    # Apply header coloring
+    for cell in sheet3[1]:
+        cell.font = Font(bold=True)
+        cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
 
     # Сохранение файла
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1621,4 +1509,3 @@ async def export_to_excel_daily(request):
     workbook.save(response)
 
     return response
-    
