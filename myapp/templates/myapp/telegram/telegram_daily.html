@@ -193,12 +193,14 @@
                                                 data-er-view="{{ item.er_view }}" 
                                                 data-vr-post="{{ item.vr_post }}">
                                                 <td class="text-center">
+                                                    <!--
                                                     <img class="channel-avatar rounded-circle border" 
                                                         src="{% if item.channel.avatar %}{% static item.channel.avatar %}{% else %}{% static 'Images/default_avatar.jpg' %}{% endif %}"
                                                         alt="{{ item.title }}" 
                                                         width="40" 
                                                         height="40"
-                                                        title="{{ item.title }}">
+                                                        title="{{ item.title }}"> -->
+                                                        <a>{{ item.channel.title }}</a>
                                                 </td>
                                                 <td>
                                                     <div class="d-flex flex-column">

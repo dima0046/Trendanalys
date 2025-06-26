@@ -1214,7 +1214,7 @@ async def telegram_daily_view(request):
     unique_titles = await sync_to_async(
         lambda: sorted(list(set(TelegramPost.objects.select_related('channel').values_list('channel__title', flat=True))))
     )()
-    unique_categories_in_data = await sync_to_async(
+    unique_categories = await sync_to_async(
         lambda: sorted(list(set(TelegramPost.objects.values_list('category', flat=True).exclude(category__isnull=True).exclude(category='N/A'))))
     )()
 
@@ -1359,8 +1359,8 @@ async def telegram_daily_view(request):
         'end_date': end_date,
         'sort_by': sort_by,
         'sort_direction': sort_direction,
-        'unique_categories': unique_categories_in_data,
-        'unique_categories_in_data': unique_categories_in_data,
+        'unique_categories': unique_categories,  # Используем все категории из базы
+        'unique_categories_in_data': unique_categories,  # Синхронизируем с уникальными категориями
         'publications_by_day': publications_by_day_paginated,
         'er_by_day': dict(er_by_day_data),
         'vr_by_day': dict(vr_by_day_data),
