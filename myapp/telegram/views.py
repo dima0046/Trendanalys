@@ -1453,6 +1453,7 @@ async def export_to_excel_daily(request):
 
     # Sheet: Combined Results (First sheet)
     combined_sheet = workbook.create_sheet('Расчетные данные')
+   
     # Таблица 1: Процент категорий (на основе list_210)
     combined_sheet['A1'] = 'Процент категорий'
     combined_sheet['A1'].font = Font(bold=True)
@@ -1489,42 +1490,68 @@ async def export_to_excel_daily(request):
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
     combined_sheet.append(['Дата', 'Количество постов'])
     publications_by_day = defaultdict(int)
+    weekday_map = {0: 'пн', 1: 'вт', 2: 'ср', 3: 'чт', 4: 'пт', 5: 'сб', 6: 'вс'}
     for post in list_all:
-        date = post.date.strftime('%Y-%m-%d')
+        day = post.date.day
+        weekday = weekday_map[post.date.weekday()]
+        date = f"{day} ({weekday})"
         publications_by_day[date] += 1
     for date, count in publications_by_day.items():
         combined_sheet.append([date, count])
     combined_sheet.append([])  # Empty row as separator
 
-    # Таблица 4: Динамика VR post по категориям (на основе list_210)
+    # Таблица 4: Динамика VR post по категориям (на основе list_210), разбита по категориям
     combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика постов по значению VR post по категориям'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Дата', 'Категория', 'Средний VRpost'])
-    vr_by_category_day = defaultdict(lambda: defaultdict(list))
-    for post in list_210:
-        date = post.date.strftime('%Y-%m-%d')
-        category = post.category
-        vr_by_category_day[date][category].append(float(post.vr_post or 0))
-    for date, categories in vr_by_category_day.items():
-        for category, vrs in categories.items():
-            avg_vr = statistics.mean(vrs) if vrs else 0
-            combined_sheet.append([date, category, avg_vr])
-    combined_sheet.append([])  # Empty row as separator
+    # Получаем уникальные категории из list_210
+    unique_categories = {post.category for post in list_210 if post.category}  # Исключаем None
+    if unique_categories:
+        combined_sheet.append(['Дата'] + sorted(unique_categories))  # Заголовок: дата + категории
+        # Подготовка данных
+        vr_data = defaultdict(lambda: defaultdict(list))
+        for post in list_210:
+            if post.category in unique_categories:
+                day = post.date.day
+                weekday = weekday_map[post.date.weekday()]
+                date = f"{day} ({weekday})"
+                vr_data[date][post.category].append(float(post.vr_post or 0))
+        # Заполнение таблицы
+        all_dates = sorted({f"{post.date.day} ({weekday_map[post.date.weekday()]})" for post in list_210})
+        for date in all_dates:
+            row = [date]
+            for category in sorted(unique_categories):
+                vrs = vr_data[date][category]
+                avg_vr = statistics.mean(vrs) if vrs else 0
+                row.append(avg_vr)
+            combined_sheet.append(row)
+    combined_sheet.append([])  # Empty row as final separator
 
-    # Таблица 5: Динамика постов по категориям (на основе list_210)
+    # Таблица 5: Динамика постов по категориям (на основе list_210), разбита по категориям
     combined_sheet['A' + str(combined_sheet.max_row + 1)] = 'Динамика постов по категориям'
     combined_sheet['A' + str(combined_sheet.max_row)].font = Font(bold=True)
     combined_sheet['A' + str(combined_sheet.max_row)].fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    combined_sheet.append(['Дата', 'Категория', 'Количество постов'])
-    posts_by_category_day = defaultdict(lambda: defaultdict(int))
-    for post in list_210:
-        date = post.date.strftime('%Y-%m-%d')
-        category = post.category
-        posts_by_category_day[date][category] += 1
-    for date, categories in posts_by_category_day.items():
-        for category, count in categories.items():
-            combined_sheet.append([date, category, count])
+    # Получаем уникальные категории из list_210
+    unique_categories = {post.category for post in list_210 if post.category}  # Исключаем None
+    if unique_categories:
+        combined_sheet.append(['Дата'] + sorted(unique_categories))  # Заголовок: дата + категории
+        # Подготовка данных
+        count_data = defaultdict(lambda: defaultdict(int))
+        for post in list_210:
+            if post.category in unique_categories:
+                day = post.date.day
+                weekday = weekday_map[post.date.weekday()]
+                date = f"{day} ({weekday})"
+                count_data[date][post.category] += 1
+        # Заполнение таблицы
+        all_dates = sorted({f"{post.date.day} ({weekday_map[post.date.weekday()]})" for post in list_210})
+        for date in all_dates:
+            row = [date]
+            for category in sorted(unique_categories):
+                count = count_data[date][category]
+                row.append(count)
+            combined_sheet.append(row)
+    combined_sheet.append([])  # Empty row as final separator
 
     # Apply borders to all cells in combined_sheet
     for row in combined_sheet.rows:
@@ -1532,7 +1559,7 @@ async def export_to_excel_daily(request):
             cell.border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     # Apply header coloring for each table
     for i, row in enumerate(combined_sheet.rows):
-        if any(cell.value in ['Процент категорий', 'Динамика типов контента', 'Количество публикаций', 'Динамика постов по значению VR post по категориям', 'Динамика постов по категориям'] for cell in row):
+        if any(cell.value in ['Динамика постов по значению VR post по категориям', 'Динамика постов по категориям'] for cell in row):
             for cell in row:
                 cell.font = Font(bold=True)
                 cell.fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
@@ -1548,7 +1575,7 @@ async def export_to_excel_daily(request):
             post.date.strftime('%Y-%m-%d'),
             post.channel.title,
             post.post_id,
-            f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            post.link,  # Используем сохранённое значение из базы данных
             post.category,
             post.message,
             float(post.vr_post or 0)
@@ -1573,7 +1600,7 @@ async def export_to_excel_daily(request):
             post.date.strftime('%Y-%m-%d'),
             post.channel.title,
             post.post_id,
-            f"https://t.me/c/{post.channel.id}/{post.post_id}",
+            post.link,  # Используем сохранённое значение из базы данных
             post.category if post.category else 'N/A',
             post.message if post.message else 'N/A',
             float(post.vr_post or 0)
