@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from asgiref.sync import sync_to_async
+from django.apps import AppConfig
 
 # Django users imports
 from django.contrib.auth.decorators import login_required
@@ -81,6 +82,13 @@ logger = logging.getLogger(__name__)
 
 # Загрузка модели и векторизатора при старте
 model, vectorizer = load_model()
+
+class MyAppConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'myapp'
+
+    def ready(self):
+        import myapp.templatetags.custom_filters
 
 def extract_username(url):
     match = re.search(r'https://t.me/([^/?]+)', url)
@@ -1162,6 +1170,8 @@ async def telegram_daily_view(request):
         posts = await sync_to_async(lambda: posts.filter(category__in=category_filters))()
     if search_message:
         posts = await sync_to_async(lambda: posts.filter(message__icontains=search_message))()
+    # Добавление фильтрации записей с message = 'N/A'
+    posts = await sync_to_async(lambda: posts.exclude(message='N/A'))()
 
     # Сортировка
     valid_sort_fields = [
@@ -1177,10 +1187,10 @@ async def telegram_daily_view(request):
     posts_list = await sync_to_async(lambda: list(posts))()
     print(f"posts_list length: {len(posts_list)}")  # Отладка
 
-    # Создание списка list_210 (топ-3 постов по vr_post по дням и каналам) с фильтрацией N/A
+    # Создание списка list_210 (топ-3 постов по vr_post по дням и каналам)
     posts_by_channel_day = defaultdict(list)
     for post in posts_list:
-        if post.message != 'N/A' and (post.category is None or post.category != 'N/A'):
+        if post.category is None or post.category != 'N/A':
             date = post.date.strftime('%Y-%m-%d')
             channel = post.channel.title
             key = (date, channel)
@@ -1198,10 +1208,8 @@ async def telegram_daily_view(request):
     if top3_filter:
         posts_by_group = defaultdict(list)
         for post in posts_list:
-            # Пропускаем посты, где message равно 'N/A'
-            if post.message != 'N/A':
-                key = (post.channel_id, post.date.strftime('%Y-%m-%d'))  # Группировка только по channel_id и дате
-                posts_by_group[key].append(post)
+            key = (post.channel_id, post.date.strftime('%Y-%m-%d'))  # Группировка только по channel_id и дате
+            posts_by_group[key].append(post)
 
         filtered_posts = []
         for key, group in posts_by_group.items():
@@ -1217,6 +1225,12 @@ async def telegram_daily_view(request):
     unique_categories = await sync_to_async(
         lambda: sorted(list(set(TelegramPost.objects.values_list('category', flat=True).exclude(category__isnull=True).exclude(category='N/A'))))
     )()
+
+    # Формирование all_categories
+    fixed_categories = ['авто', 'игры', 'общество', 'политика', 'развлечения', 'спорт', 'шб']
+    all_categories = list(set(fixed_categories + unique_categories))
+    all_categories.sort()  # Сортируем для читаемости
+    print(f"all_categories: {all_categories}")  # Отладка
 
     # Пагинация с учетом page_size
     page_size = int(page_size) if page_size.isdigit() and int(page_size) > 0 else len(posts_list)
@@ -1361,6 +1375,7 @@ async def telegram_daily_view(request):
         'sort_direction': sort_direction,
         'unique_categories': unique_categories,  # Используем все категории из базы
         'unique_categories_in_data': unique_categories,  # Синхронизируем с уникальными категориями
+        'all_categories': all_categories,  # Добавляем объединённый список для <select>
         'publications_by_day': publications_by_day_paginated,
         'er_by_day': dict(er_by_day_data),
         'vr_by_day': dict(vr_by_day_data),
